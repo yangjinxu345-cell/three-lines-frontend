@@ -6,373 +6,246 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
-    :root {
-      --brand: #0051c3;
-      --bg: #f7f7f7;
-      --card: #ffffff;
-      --text: #111;
-      --muted: #666;
-      --border: #e5e7eb;
-      --danger: #d93025;
-      --ok: #188038;
+    * {
+      box-sizing: border-box;
     }
-    * { box-sizing: border-box; }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
       margin: 0;
-      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
     }
+
     header {
-      background: var(--brand);
+      background-color: #0b57d0;
       color: #fff;
-      padding: 18px 16px;
+      padding: 28px 16px;
       text-align: center;
     }
-    header h1 { margin: 0 0 6px; font-size: 28px; }
-    header p { margin: 0; opacity: .95; }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
 
     main {
-      max-width: 980px;
-      margin: 22px auto;
+      max-width: 1200px;
+      margin: 32px auto;
       padding: 0 16px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
     }
-    @media (min-width: 880px) {
-      main { grid-template-columns: 1.2fr .8fr; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
     }
 
     .card {
-      background: var(--card);
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-      padding: 18px;
-    }
-    h2 { margin: 0 0 12px; font-size: 20px; }
-    p { line-height: 1.6; }
-
-    label { display: block; font-weight: 600; margin: 10px 0 6px; }
-    input[type="text"], textarea, select {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 14px;
       background: #fff;
-    }
-    textarea { min-height: 44px; resize: vertical; }
-
-    .row { display: grid; gap: 12px; }
-    @media (min-width: 640px) {
-      .row.two { grid-template-columns: 1fr 1fr; }
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      align-items: center;
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 16px;
     }
-    button {
-      border: 0;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
+
+    label {
+      display: block;
       font-size: 14px;
+      margin-top: 14px;
+      margin-bottom: 6px;
     }
-    .primary { background: var(--brand); color: #fff; }
-    .ghost { background: #eef3ff; color: #083a87; }
-    .danger { background: #ffe9e7; color: var(--danger); }
 
-    .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
-    .msg { font-size: 13px; margin-left: auto; }
-    .msg.ok { color: var(--ok); }
-    .msg.err { color: var(--danger); }
+    input, select, textarea, button {
+      width: 100%;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    small {
+      display: block;
+      margin-top: 4px;
+      color: #666;
+      font-size: 12px;
+    }
+
+    button {
+      margin-top: 18px;
+      background-color: #0b57d0;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0843a3;
+    }
 
     .post {
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
       padding: 12px;
-      margin-top: 10px;
-      background: #fff;
-    }
-    .post .meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .post .lines { margin: 0; padding-left: 18px; }
-    .post .lines li { margin: 4px 0; }
-
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 10px;
-    }
-    .pill {
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      color: var(--muted);
+      margin-bottom: 12px;
       background: #fafafa;
+    }
+
+    .post-header {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    .post-line {
+      font-size: 14px;
+      margin: 4px 0;
     }
 
     footer {
       text-align: center;
       font-size: 12px;
-      color: var(--muted);
-      margin: 22px 0 26px;
+      color: #777;
+      margin: 40px 0 20px;
     }
-    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <header>
-    <h1>3行アプリ開発プロジェクト</h1>
-    <p>授業内容を「3行」で振り返る学習支援アプリ</p>
-  </header>
 
-  <main>
+<header>
+  <h1>3行アプリ開発プロジェクト</h1>
+  <p>授業内容を「3行」で振り返る学習支援アプリ</p>
+</header>
+
+<main>
+  <div class="container">
+
     <!-- 左：投稿フォーム -->
-    <section class="card">
+    <div class="card">
       <h2>3行まとめ投稿</h2>
 
-      <div class="row two">
-        <div>
-          <label for="student">名前（仮）</label>
-          <select id="student">
-            <option value="楊旻">楊旻</option>
-            <option value="門田">門田</option>
-            <option value="長岡">長岡</option>
-            <option value="神尾">神尾</option>
-            <option value="その他">その他</option>
-          </select>
-          <div class="hint">※ 後で「全員名簿から選択」方式にも変更できます。</div>
-        </div>
+      <label>名前（仮）</label>
+      <select id="name">
+        <option>楊旻</option>
+        <option>山田</option>
+        <option>佐藤</option>
+      </select>
+      <small>※ 後で「全員名簿から選択」に変更可能</small>
 
-        <div>
-          <label for="lesson">授業名 / テーマ</label>
-          <label for="classDate">授業日</label>
-          <input id="classDate" type="date" />
-          <div class="hint">※ デフォルトは今日の日付です。</div>
+      <label>授業日</label>
+      <input type="date" id="date" />
 
-          <input id="lesson" type="text" placeholder="例）SQL：外部結合 / Java：継承" />
-          <div class="hint">※ 後で「授業ごとのテンプレート設定」に発展させます。</div>
-        </div>
-      </div>
+      <label>授業名 / テーマ</label>
+      <input type="text" id="topic" placeholder="例）SQL：外部結合 / Java：継承" />
 
-      <label for="line1">1行目</label>
-      <textarea id="line1" maxlength="80" placeholder="今日のポイント①（80文字まで）"></textarea>
+      <label>1行目</label>
+      <textarea id="line1" placeholder="今日のポイント①（80文字まで）"></textarea>
 
-      <label for="line2">2行目</label>
-      <textarea id="line2" maxlength="80" placeholder="今日のポイント②（80文字まで）"></textarea>
+      <label>2行目</label>
+      <textarea id="line2" placeholder="今日のポイント②（80文字まで）"></textarea>
 
-      <label for="line3">3行目</label>
-      <textarea id="line3" maxlength="80" placeholder="今日のポイント③（80文字まで）"></textarea>
+      <label>3行目</label>
+      <textarea id="line3" placeholder="今日のポイント③（80文字まで）"></textarea>
 
-      <div class="actions">
-        <button class="primary" id="btnPost">投稿（ローカル保存）</button>
-        <button class="ghost" id="btnFill">例を自動入力</button>
-        <button class="danger" id="btnClear">クリア</button>
-        <div id="msg" class="msg"></div>
-      </div>
+      <button onclick="submitPost()">投稿する</button>
 
-      <div class="hint">
-        今は「ローカル保存（ブラウザ内）」で動作確認します。<br/>
-        次の段階で <code>Cloudflare Workers</code> の API に接続し、<code>D1</code> に保存します。
-      </div>
-    </section>
+      <small>※ 現在は localStorage に保存（後で Cloudflare D1 に接続）</small>
+    </div>
 
-    <!-- 右：一覧 -->
-    <aside class="card">
+    <!-- 右：投稿一覧 -->
+    <div class="card">
       <h2>みんなの投稿（仮）</h2>
-      <div class="toolbar">
-        <span class="pill">保存先：このブラウザ（localStorage）</span>
-        <span class="pill" id="countPill">0 件</span>
-      </div>
-      <div id="posts"></div>
-      <div class="hint">
-        ※ “いいね / コメント / 分析ダッシュボード” は後で追加します。
-      </div>
-    </aside>
-  </main>
+      <small id="countText"></small>
 
-  <footer>
-    © 2025 3行アプリ開発プロジェクト（Cloudflare Pages）
-  </footer>
+      <div id="postList"></div>
 
-  <script>
-    // ===== 設定（後でここを Workers API に差し替える）=====
-    // const API_BASE = "https://your-worker.your-subdomain.workers.dev";
+      <small>※ 「いいね / コメント / 分析」は後で追加予定</small>
+    </div>
 
-    const STORAGE_KEY = "three_lines_posts_v1";
+  </div>
+</main>
 
-    const $ = (id) => document.getElementById(id);
+<footer>
+  © 2025 3行アプリ開発プロジェクト
+</footer>
 
-    (function initDate() {
-        const d = new Date();
-        const pad = n => String(n).padStart(2, "0");
-        const today = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-        const el = document.getElementById("classDate");
-        if (el) el.value = today;
-      })();
+<script>
+  const STORAGE_KEY = "three-lines-posts";
 
-    
-    function nowJSTString() {
-      // ブラウザのローカル時刻をそのまま表示（日本時間PCならJST）
-      const d = new Date();
-      const pad = (n) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
+  document.getElementById("date").value =
+    new Date().toISOString().slice(0, 10);
 
-    function loadPosts() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const posts = raw ? JSON.parse(raw) : [];
-        return Array.isArray(posts) ? posts : [];
-      } catch {
-        return [];
-      }
-    }
+  function loadPosts() {
+    const posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const list = document.getElementById("postList");
+    list.innerHTML = "";
 
-    function savePosts(posts) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
-    }
-
-    function setMessage(text, type) {
-      const el = $("msg");
-      el.textContent = text || "";
-      el.className = "msg" + (type ? ` ${type}` : "");
-      if (text) {
-        // 3秒で消える
-        setTimeout(() => {
-          if (el.textContent === text) el.textContent = "";
-        }, 3000);
-      }
-    }
-
-    function validateInput(student, lesson, l1, l2, l3) {
-      if (!student) return "名前を選んでください。";
-      if (!lesson.trim()) return "授業名 / テーマを入力してください。";
-      if (!classDate) return "授業日を選択してください。";
-
-      const lines = [l1, l2, l3].map(s => s.trim());
-      if (lines.some(s => !s)) return "1～3行目をすべて入力してください。";
-      return null;
-    }
-
-    function render() {
-      const posts = loadPosts().sort((a,b) => b.createdAt - a.createdAt);
-      $("countPill").textContent = `${posts.length} 件`;
-
-      const container = $("posts");
-      container.innerHTML = "";
-
-      if (posts.length === 0) {
-        container.innerHTML = `<p class="hint">まだ投稿がありません。左のフォームから投稿してみてください。</p>`;
-        return;
-      }
-
-      for (const p of posts) {
-        const div = document.createElement("div");
-        div.className = "post";
-        div.innerHTML = `
-          <div class="meta">
-            <span>🧑 ${escapeHtml(p.student)}</span>
-            <span>📘 ${escapeHtml(p.lesson)}</span>
-            <span>🕒 ${escapeHtml(p.createdAtText)}</span>
-            <span>📅 ${escapeHtml(p.classDate)}</span>
-
-          </div>
-          <ol class="lines">
-            <li>${escapeHtml(p.line1)}</li>
-            <li>${escapeHtml(p.line2)}</li>
-            <li>${escapeHtml(p.line3)}</li>
-          </ol>
-        `;
-        container.appendChild(div);
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function clearForm() {
-      $("lesson").value = "";
-      $("line1").value = "";
-      $("line2").value = "";
-      $("line3").value = "";
-      $("lesson").focus();
-    }
-
-    $("btnPost").addEventListener("click", () => {
-      const student = $("student").value;
-      const lesson = $("lesson").value;
-      const line1 = $("line1").value;
-      const line2 = $("line2").value;
-      const line3 = $("line3").value;
-      const classDate = $("classDate").value;
-
-
-      const err = validateInput(student, lesson, line1, line2, line3);
-      if (err) {
-        setMessage(err, "err");
-        return;
-      }
-      
-
-      const posts = loadPosts();
-      const post = {
-        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-        student,
-        lesson: lesson.trim(),
-        classDate,           
-        line1: line1.trim(),
-        line2: line2.trim(),
-        line3: line3.trim(),
-        createdAt: Date.now(),
-        createdAtText: nowJSTString(),
-      };
-      posts.push(post);
-      savePosts(posts);
-
-      setMessage("投稿しました（ローカル保存）✅", "ok");
-      clearForm();
-      render();
+    posts.reverse().forEach(p => {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.innerHTML = `
+        <div class="post-header">
+          👤 ${p.name} ｜ 📘 ${p.topic || "（未入力）"} ｜ 📅 ${p.date}
+        </div>
+        <div class="post-line">1. ${p.line1}</div>
+        <div class="post-line">2. ${p.line2}</div>
+        <div class="post-line">3. ${p.line3}</div>
+      `;
+      list.appendChild(div);
     });
 
-    $("btnFill").addEventListener("click", () => {
-      $("lesson").value = "SQL：外部結合（LEFT JOIN）";
-      $("line1").value = "FROMに書いた表でも、外部結合は旧式記法だと表現が難しい。";
-      $("line2").value = "LEFT JOINは左表を全件残し、右表が無ければNULLになる。";
-      $("line3").value = "条件を書く場所（ON / WHERE）で結果が変わるので注意。";
-      setMessage("例を入力しました。必要なら編集して投稿してください。", "ok");
-    });
+    document.getElementById("countText").innerText =
+      `保存先：このブラウザ（localStorage）／ ${posts.length} 件`;
+  }
 
-    $("btnClear").addEventListener("click", () => {
-      clearForm();
-      setMessage("入力をクリアしました。", "ok");
-    });
+  function submitPost() {
+    const post = {
+      name: name.value,
+      date: date.value,
+      topic: topic.value,
+      line1: line1.value,
+      line2: line2.value,
+      line3: line3.value,
+      createdAt: new Date().toISOString()
+    };
 
-    // 初期表示
-    render();
-  </script>
+    const posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    posts.push(post);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+
+    line1.value = "";
+    line2.value = "";
+    line3.value = "";
+
+    loadPosts();
+  }
+
+  loadPosts();
+</script>
+
 </body>
 </html>

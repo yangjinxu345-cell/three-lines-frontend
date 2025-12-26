@@ -195,6 +195,8 @@
 
 <script>
   const STORAGE_KEY = "three-lines-posts";
+  const API_BASE = "https://three-lines-api.yangjinxu345.workers.dev";
+
 
   document.getElementById("date").value =
     new Date().toISOString().slice(0, 10);
@@ -245,6 +247,20 @@
   }
 
   loadPosts();
+  // ✅ Workers 接続チェック（最小テスト）
+  fetch(`${API_BASE}/api/health`)
+    .then(r => r.json())
+    .then(data => {
+      console.log("Workers health:", data);
+      const el = document.getElementById("countText");
+      el.innerText += ` ／ Workers: OK`;
+    })
+    .catch(err => {
+      console.error("Workers health error:", err);
+      const el = document.getElementById("countText");
+      el.innerText += ` ／ Workers: NG`;
+    });
+
 </script>
 
 </body>

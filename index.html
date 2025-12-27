@@ -1,267 +1,468 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <style>
-    * {
-      box-sizing: border-box;
+    :root{
+      --blue:#0b57d0;
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --shadow:0 12px 28px rgba(16,24,40,.08);
+      --radius:16px;
     }
-
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-      background-color: #f4f6f8;
-      color: #333;
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--text);background:var(--bg)}
+    header{
+      background:var(--blue);
+      color:#fff;
+      padding:48px 18px;
+      text-align:center;
     }
-
-    header {
-      background-color: #0b57d0;
-      color: #fff;
-      padding: 28px 16px;
-      text-align: center;
+    header h1{margin:0;font-size:40px;letter-spacing:.02em}
+    header p{margin:14px 0 0;color:rgba(255,255,255,.9);font-size:16px}
+    .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 56px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
+      border:1px solid rgba(229,231,235,.75);
     }
-
-    header h1 {
-      margin: 0;
-      font-size: 28px;
+    .card h2{margin:0 0 14px;font-size:26px}
+    .muted{color:var(--muted)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:700px){.row{grid-template-columns:1fr}}
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input, select, textarea{
+      width:100%;
+      padding:12px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      outline:none;
+      font-size:14px;
+      background:#fff;
     }
-
-    header p {
-      margin-top: 8px;
-      font-size: 14px;
-      opacity: 0.9;
+    textarea{min-height:90px;resize:vertical}
+    input:focus, select:focus, textarea:focus{border-color:rgba(11,87,208,.55);box-shadow:0 0 0 4px rgba(11,87,208,.12)}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    button{
+      border:0;
+      border-radius:12px;
+      padding:12px 14px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:14px;
     }
-
-    main {
-      max-width: 1200px;
-      margin: 32px auto;
-      padding: 0 16px;
+    .primary{background:var(--blue);color:#fff}
+    .ghost{background:#f3f4f6;color:#111}
+    .danger{background:#fee2e2;color:#991b1b}
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;border-radius:999px;font-size:12px;
+      border:1px solid var(--line);background:#fff;color:#111;
     }
-
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
+    .badge.ok{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:#166534}
+    .badge.err{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#7f1d1d}
+    .topline{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{
+      padding:8px 10px;border-radius:999px;border:1px solid var(--line);
+      background:#fff;font-size:12px;cursor:pointer;color:#111;
     }
-
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    .tab.active{background:#111;color:#fff;border-color:#111}
+    .list{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+    .item{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px 12px;
+      background:#fff;
     }
-
-    h2 {
-      margin-top: 0;
-      font-size: 20px;
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 14px;
-      margin-top: 14px;
-      margin-bottom: 6px;
-    }
-
-    input, select, textarea, button {
-      width: 100%;
-      font-size: 14px;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    small {
-      display: block;
-      margin-top: 4px;
-      color: #666;
-      font-size: 12px;
-    }
-
-    button {
-      margin-top: 18px;
-      background-color: #0b57d0;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #0843a3;
-    }
-
-    .post {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-      background: #fafafa;
-    }
-
-    .post-header {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 6px;
-    }
-
-    .post-line {
-      font-size: 14px;
-      margin: 4px 0;
-    }
-
-    footer {
-      text-align: center;
-      font-size: 12px;
-      color: #777;
-      margin: 40px 0 20px;
-    }
-
-    @media (max-width: 900px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-    }
+    .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;margin-bottom:8px}
+    .meta b{color:#111}
+    ol{margin:8px 0 0 20px;padding:0}
+    footer{padding:22px 12px;text-align:center;color:var(--muted)}
+    .small{font-size:12px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
+    .inline{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
   </style>
 </head>
 
 <body>
+  <header>
+    <h1>3行アプリ開発プロジェクト</h1>
+    <p>授業内容を「3行」で振り返る学習支援アプリ</p>
+  </header>
 
-<header>
-  <h1>3行アプリ開発プロジェクト</h1>
-  <p>授業内容を「3行」で振り返る学習支援アプリ</p>
-</header>
+  <div class="wrap">
+    <div class="grid">
 
-<main>
-  <div class="container">
+      <!-- LEFT: Form -->
+      <div class="card">
+        <h2>3行まとめ投稿</h2>
 
-    <!-- 左：投稿フォーム -->
-    <div class="card">
-      <h2>3行まとめ投稿</h2>
+        <div class="row">
+          <div>
+            <label>名前（仮）</label>
+            <select id="name">
+              <option value="楊旻">楊旻</option>
+              <option value="門田">門田</option>
+              <option value="長岡">長岡</option>
+              <option value="神尾">神尾</option>
+              <option value="その他">その他</option>
+            </select>
+            <div class="hint">※ 後で「全員名簿から選択」に変更可能</div>
+          </div>
 
-      <label>名前（仮）</label>
-      <select id="name">
-        <option>楊旻</option>
-        <option>山田</option>
-        <option>佐藤</option>
-      </select>
-      <small>※ 後で「全員名簿から選択」に変更可能</small>
+          <div>
+            <label>授業日</label>
+            <input id="lessonDate" type="date" />
+            <div class="hint">※ デフォルトは今日の日付</div>
+          </div>
+        </div>
 
-      <label>授業日</label>
-      <input type="date" id="date" />
+        <label>授業名 / テーマ</label>
+        <input id="topic" placeholder="例）SQL：外部結合 / Java：継承" />
+        <div class="hint">※ 後で「授業ごとのテンプレート設定」に発展させます</div>
 
-      <label>授業名 / テーマ</label>
-      <input type="text" id="topic" placeholder="例）SQL：外部結合 / Java：継承" />
+        <label>1行目</label>
+        <textarea id="line1" maxlength="80" placeholder="今日のポイント①（80文字まで）"></textarea>
 
-      <label>1行目</label>
-      <textarea id="line1" placeholder="今日のポイント①（80文字まで）"></textarea>
+        <label>2行目</label>
+        <textarea id="line2" maxlength="80" placeholder="今日のポイント②（80文字まで）"></textarea>
 
-      <label>2行目</label>
-      <textarea id="line2" placeholder="今日のポイント②（80文字まで）"></textarea>
+        <label>3行目</label>
+        <textarea id="line3" maxlength="80" placeholder="今日のポイント③（80文字まで）"></textarea>
 
-      <label>3行目</label>
-      <textarea id="line3" placeholder="今日のポイント③（80文字まで）"></textarea>
+        <div class="btns">
+          <button class="primary" id="btnSubmit">投稿（local + D1）</button>
+          <button class="ghost" id="btnFillSample">サンプル入力</button>
+          <button class="danger" id="btnClearLocal">localStorage 全消去</button>
+        </div>
 
-      <button onclick="submitPost()">投稿する</button>
+        <div style="margin-top:14px" class="small muted">
+          API: <span class="mono" id="apiBaseText"></span>
+        </div>
+      </div>
 
-      <small>※ 現在は localStorage に保存（後で Cloudflare D1 に接続）</small>
+      <!-- RIGHT: Feed -->
+      <div class="card">
+        <div class="topline">
+          <h2 style="margin:0">みんなの投稿（仮）</h2>
+          <div class="inline">
+            <span class="badge" id="localBadge">localStorage: 0件</span>
+            <span class="badge" id="workerBadge">Workers: ?</span>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="tabs">
+          <button class="tab active" id="tabLocal">Local</button>
+          <button class="tab" id="tabServer">D1（Server）</button>
+          <button class="tab" id="btnRefresh">更新</button>
+        </div>
+
+        <div class="hint" style="margin-top:10px">
+          ※ 「いいね / コメント / 分析」は後で追加予定
+        </div>
+
+        <div class="list" id="list"></div>
+
+        <div class="small muted" style="margin-top:12px">
+          ※ D1 連携確認のコツ：<span class="mono">D1（Server）</span>タブで投稿が表示されれば成功。
+        </div>
+      </div>
+
     </div>
-
-    <!-- 右：投稿一覧 -->
-    <div class="card">
-      <h2>みんなの投稿（仮）</h2>
-      <small id="countText"></small>
-
-      <div id="postList"></div>
-
-      <small>※ 「いいね / コメント / 分析」は後で追加予定</small>
-    </div>
-
   </div>
-</main>
 
-<footer>
-  © 2025 3行アプリ開発プロジェクト
-</footer>
+  <footer>© 2025 3行アプリ開発プロジェクト</footer>
 
 <script>
-  const STORAGE_KEY = "three-lines-posts";
+  // ====== CONFIG ======
   const API_BASE = "https://three-lines-api.yangjinxu345.workers.dev";
+  const LS_KEY = "three_lines_posts_v1";
+  const DEFAULT_LIMIT = 30;
 
+  // ====== DOM ======
+  const $ = (id) => document.getElementById(id);
+  const apiBaseText = $("apiBaseText");
+  const workerBadge = $("workerBadge");
+  const localBadge = $("localBadge");
+  const list = $("list");
 
-  document.getElementById("date").value =
-    new Date().toISOString().slice(0, 10);
+  const tabLocal = $("tabLocal");
+  const tabServer = $("tabServer");
 
-  function loadPosts() {
-    const posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const list = document.getElementById("postList");
+  let currentTab = "local"; // 'local' | 'server'
+  apiBaseText.textContent = API_BASE;
+
+  // ====== Utils ======
+  function nowISO() {
+    return new Date().toISOString();
+  }
+  function escapeHtml(s) {
+    return (s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+  function setBadge(el, text, kind) {
+    el.textContent = text;
+    el.classList.remove("ok", "err");
+    if (kind === "ok") el.classList.add("ok");
+    if (kind === "err") el.classList.add("err");
+  }
+
+  // ====== LocalStorage ======
+  function loadLocalPosts() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+  function saveLocalPosts(arr) {
+    localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  }
+  function addLocalPost(p) {
+    const arr = loadLocalPosts();
+    arr.unshift(p);
+    saveLocalPosts(arr);
+  }
+
+  // ====== Render ======
+  function renderPosts(posts, sourceLabel) {
     list.innerHTML = "";
-
-    posts.reverse().forEach(p => {
+    if (!posts || posts.length === 0) {
       const div = document.createElement("div");
-      div.className = "post";
-      div.innerHTML = `
-        <div class="post-header">
-          👤 ${p.name} ｜ 📘 ${p.topic || "（未入力）"} ｜ 📅 ${p.date}
-        </div>
-        <div class="post-line">1. ${p.line1}</div>
-        <div class="post-line">2. ${p.line2}</div>
-        <div class="post-line">3. ${p.line3}</div>
-      `;
+      div.className = "item muted";
+      div.textContent = sourceLabel === "server"
+        ? "まだ投稿がありません（D1）。左のフォームから投稿してみてください。"
+        : "まだ投稿がありません（localStorage）。左のフォームから投稿してみてください。";
       list.appendChild(div);
-    });
+      return;
+    }
 
-    document.getElementById("countText").innerText =
-      `保存先：このブラウザ（localStorage）／ ${posts.length} 件`;
+    for (const p of posts) {
+      const div = document.createElement("div");
+      div.className = "item";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const name = document.createElement("span");
+      name.innerHTML = "👤 <b>" + escapeHtml(p.name || "undefined") + "</b>";
+
+      const topic = document.createElement("span");
+      topic.innerHTML = "🟦 " + escapeHtml(p.topic || "(テーマなし)");
+
+      const date = document.createElement("span");
+      date.innerHTML = "🗓️ " + escapeHtml(p.lesson_date || p.lessonDate || "");
+
+      const created = document.createElement("span");
+      const createdVal = p.created_at || p.createdAt || "";
+      created.innerHTML = "🕒 " + escapeHtml(createdVal);
+
+      meta.appendChild(name);
+      meta.appendChild(document.createTextNode(" "));
+      meta.appendChild(topic);
+      meta.appendChild(document.createTextNode(" "));
+      meta.appendChild(date);
+      if (createdVal) {
+        meta.appendChild(document.createTextNode(" "));
+        meta.appendChild(created);
+      }
+
+      const lines = document.createElement("ol");
+      const l1 = document.createElement("li"); l1.textContent = p.line1 || "";
+      const l2 = document.createElement("li"); l2.textContent = p.line2 || "";
+      const l3 = document.createElement("li"); l3.textContent = p.line3 || "";
+      lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
+
+      div.appendChild(meta);
+      div.appendChild(lines);
+      list.appendChild(div);
+    }
   }
 
-  function submitPost() {
-    const post = {
-      name: name.value,
-      date: date.value,
-      topic: topic.value,
-      line1: line1.value,
-      line2: line2.value,
-      line3: line3.value,
-      createdAt: new Date().toISOString()
+  function refreshLocalUI() {
+    const local = loadLocalPosts();
+    setBadge(localBadge, `localStorage: ${local.length}件`, "ok");
+    if (currentTab === "local") renderPosts(local, "local");
+  }
+
+  // ====== API Calls ======
+  async function checkHealth() {
+    try {
+      const r = await fetch(API_BASE + "/api/health", { method: "GET" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (j.status === "ok") {
+        setBadge(workerBadge, "Workers: OK", "ok");
+        return true;
+      }
+      throw new Error("Bad JSON");
+    } catch (e) {
+      setBadge(workerBadge, "Workers: ERROR", "err");
+      return false;
+    }
+  }
+
+  async function fetchServerPosts() {
+    const url = API_BASE + "/api/posts?limit=" + DEFAULT_LIMIT;
+    const r = await fetch(url, { method: "GET" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "server error");
+    return j.data || [];
+  }
+
+  async function postToServer(payload) {
+    const url = API_BASE + "/api/posts";
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "server error");
+    return j;
+  }
+
+  async function refreshServerUI() {
+    try {
+      const ok = await checkHealth();
+      if (!ok) throw new Error("workers not ok");
+      const posts = await fetchServerPosts();
+      // server tab doesn't show localBadge count (still useful), keep it
+      if (currentTab === "server") renderPosts(posts, "server");
+    } catch (e) {
+      if (currentTab === "server") {
+        list.innerHTML = "";
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="muted">D1 取得に失敗しました。</div>
+          <div class="small muted mono" style="margin-top:6px">${escapeHtml(String(e))}</div>
+          <div class="small muted" style="margin-top:10px">まず <span class="mono">/api/health</span> が OK か確認してください。</div>`;
+        list.appendChild(div);
+      }
+      setBadge(workerBadge, "Workers: ERROR", "err");
+    }
+  }
+
+  // ====== Submit ======
+  function getFormPayload() {
+    const name = $("name").value.trim();
+    const lesson_date = $("lessonDate").value; // YYYY-MM-DD
+    const topic = $("topic").value.trim();
+    const line1 = $("line1").value.trim();
+    const line2 = $("line2").value.trim();
+    const line3 = $("line3").value.trim();
+
+    return { name, lesson_date, topic, line1, line2, line3 };
+  }
+
+  function validate(p) {
+    if (!p.name) return "名前を入力してください。";
+    if (!p.lesson_date) return "授業日を選択してください。";
+    if (!p.line1 || !p.line2 || !p.line3) return "1〜3行目をすべて入力してください。";
+    if (p.line1.length > 80 || p.line2.length > 80 || p.line3.length > 80) return "各行は80文字以内です。";
+    return null;
+  }
+
+  async function handleSubmit() {
+    const p = getFormPayload();
+    const err = validate(p);
+    if (err) { alert(err); return; }
+
+    // 1) always save local
+    const localPost = {
+      name: p.name,
+      lesson_date: p.lesson_date,
+      topic: p.topic,
+      line1: p.line1,
+      line2: p.line2,
+      line3: p.line3,
+      createdAt: new Date().toLocaleString()
     };
+    addLocalPost(localPost);
+    refreshLocalUI();
 
-    const posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    posts.push(post);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+    // 2) try post to server
+    try {
+      const ok = await checkHealth();
+      if (!ok) throw new Error("Workers not reachable");
+      await postToServer(p);
+      setBadge(workerBadge, "Workers: OK", "ok");
 
-    line1.value = "";
-    line2.value = "";
-    line3.value = "";
-
-    loadPosts();
+      // if user is on server tab, refresh it; otherwise keep local view
+      await refreshServerUI();
+      alert("投稿しました！(local + D1)");
+    } catch (e) {
+      setBadge(workerBadge, "Workers: ERROR", "err");
+      alert("local には保存できましたが、D1 への送信に失敗しました。\n\n" + e);
+    }
   }
 
-  loadPosts();
-  // ✅ Workers 接続チェック（最小テスト）
-  fetch(`${API_BASE}/api/health`)
-    .then(r => r.json())
-    .then(data => {
-      console.log("Workers health:", data);
-      const el = document.getElementById("countText");
-      el.innerText += ` ／ Workers: OK`;
-    })
-    .catch(err => {
-      console.error("Workers health error:", err);
-      const el = document.getElementById("countText");
-      el.innerText += ` ／ Workers: NG`;
-    });
+  // ====== Events ======
+  $("btnSubmit").addEventListener("click", handleSubmit);
 
+  $("btnFillSample").addEventListener("click", () => {
+    $("topic").value = "ソフトウェア工学";
+    $("line1").value = "111月";
+    $("line2").value = "222";
+    $("line3").value = "333";
+  });
+
+  $("btnClearLocal").addEventListener("click", () => {
+    if (!confirm("localStorage の投稿を全消去します。よろしいですか？")) return;
+    localStorage.removeItem(LS_KEY);
+    refreshLocalUI();
+    if (currentTab === "local") renderPosts([], "local");
+  });
+
+  tabLocal.addEventListener("click", () => {
+    currentTab = "local";
+    tabLocal.classList.add("active");
+    tabServer.classList.remove("active");
+    refreshLocalUI();
+  });
+
+  tabServer.addEventListener("click", async () => {
+    currentTab = "server";
+    tabServer.classList.add("active");
+    tabLocal.classList.remove("active");
+    await refreshServerUI();
+  });
+
+  $("btnRefresh").addEventListener("click", async () => {
+    if (currentTab === "local") refreshLocalUI();
+    else await refreshServerUI();
+  });
+
+  // ====== Init ======
+  (function init(){
+    // set date default = today (local time)
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    $("lessonDate").value = `${yyyy}-${mm}-${dd}`;
+
+    refreshLocalUI();
+    checkHealth(); // show initial status
+    // default show local
+    renderPosts(loadLocalPosts(), "local");
+  })();
 </script>
-
 </body>
 </html>

@@ -1,66 +1,66 @@
-export async function onRequestPost(context) {
-  try {
-    const { request, env } = context;
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
 
-    const body = await request.json().catch(() => null);
-    if (!body) return json({ ok: false, error: "Invalid JSON" }, 400);
+  // CORS（你现在同域其实不必须，但加上不吃亏）
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+  if (request.method === "OPTIONS") {
+    return new Response("", { headers: corsHeaders });
+  }
 
-    const {
-      name,
-      class_name,
-      lesson_date,
-      topic,
-      line1,
-      line2,
-      line3,
-    } = body;
+  // ===== GET /api/posts 取列表 =====
+  if (request.method === "GET") {
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 100);
+
+    const rs = await env.DB.prepare(
+      `SELECT id, name, class_name, lesson_date, topic, line1, line2, line3, created_at
+       FROM posts
+       ORDER BY id DESC
+       LIMIT ?`
+    ).bind(limit).all();
+
+    return new Response(JSON.stringify({ ok: true, items: rs.results }), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders },
+    });
+  }
+
+  // ===== POST /api/posts 写入 =====
+  if (request.method === "POST") {
+    const body = await request.json();
+
+    const name = body.name ?? "";
+    const class_name = body.class_name ?? "";
+    const lesson_date = body.lesson_date ?? "";
+    const topic = body.topic ?? "";
+    const line1 = body.line1 ?? "";
+    const line2 = body.line2 ?? "";
+    const line3 = body.line3 ?? "";
 
     if (!name || !lesson_date || !line1 || !line2 || !line3) {
-      return json({ ok: false, error: "Missing required fields: name, lesson_date, line1-3" }, 400);
+      return new Response(JSON.stringify({ ok: false, error: "missing required fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders },
+      });
     }
 
-    const normalizedDate = normalizeDate(lesson_date);
-    if (!normalizedDate) {
-      return json({ ok: false, error: "lesson_date format should be YYYY-MM-DD or YYYY/MM/DD" }, 400);
-    }
-
-    const stmt = env.DB.prepare(
+    const result = await env.DB.prepare(
       `INSERT INTO posts (name, class_name, lesson_date, topic, line1, line2, line3)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      String(name).trim(),
-      class_name ? String(class_name).trim() : null,
-      normalizedDate,
-      topic ? String(topic).trim() : null,
-      String(line1).trim(),
-      String(line2).trim(),
-      String(line3).trim()
-    );
+    ).bind(name, class_name, lesson_date, topic, line1, line2, line3).run();
 
-    const result = await stmt.run();
-
-    return json(
-      { ok: true, id: result?.meta?.last_row_id ?? null, lesson_date: normalizedDate },
-      201
-    );
-  } catch (err) {
-    return json({ ok: false, error: err?.message || String(err) }, 500);
+    return new Response(JSON.stringify({ ok: true, id: result.meta.last_row_id, lesson_date }), {
+      status: 201,
+      headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders },
+    });
   }
-}
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+  return new Response(JSON.stringify({ ok: false, error: "Method Not Allowed" }), {
+    status: 405,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders },
   });
-}
-
-function normalizeDate(s) {
-  if (!s) return null;
-  const str = String(s).trim();
-  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  m = str.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  return null;
 }

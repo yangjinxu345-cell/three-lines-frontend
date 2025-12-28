@@ -87,3 +87,699 @@
     /* ====== teacher mode ====== */
     .row {
       display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .row > * { flex: 1; min-width: 220px; }
+    .mini {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      background: #f9fafb;
+      font-size: 13px;
+      color: #111;
+    }
+    .switch {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .switch input { width: auto; margin: 0; }
+    .warn { color: #b45309; font-size: 13px; }
+    .err { color: #b91c1c; font-size: 13px; }
+    .ok { color: #15803d; font-size: 13px; }
+
+    /* ====== actions ====== */
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .btn2 {
+      width: auto;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      background: #2563eb;
+      border: 0;
+      color: #fff;
+    }
+    .btn2.gray { background: #374151; }
+    .btn2.red { background: #dc2626; }
+    .btn2:disabled { opacity: .5; cursor: not-allowed; }
+
+    .count {
+      font-size: 13px;
+      color: #374151;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+    }
+
+    /* ====== comments ====== */
+    .comments {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fbfdff;
+    }
+    .commentItem {
+      padding: 10px 0;
+      border-top: 1px solid #eef2f7;
+    }
+    .commentItem:first-child { border-top: 0; }
+    .commentMeta {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .commentBody {
+      font-size: 14px;
+      color: #111827;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .commentEdit textarea { min-height: 70px; }
+    .inlineBtns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .inlineBtns button { margin-top:0; }
+
+    .muted { color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="nav">
+    <a href="index.html">← 戻る（メニュー）</a>
+  </div>
+
+  <h1>3行投稿</h1>
+
+  <!-- 教員モード -->
+  <div class="card">
+    <h2 style="margin-top:0">教員フィードバック（いいね・コメント）</h2>
+
+    <div class="row">
+      <div>
+        <div class="pill">
+          <label class="switch" style="margin:0;font-weight:600">
+            <input type="checkbox" id="teacherMode" />
+            教員モード
+          </label>
+          <span id="teacherModeState" class="muted">OFF</span>
+        </div>
+        <div class="mini">※ 教員モードONで「いいね/コメントの投稿・編集・削除」が可能になります。</div>
+      </div>
+
+      <div>
+        <label style="margin-top:0">教員名（teacher_name）</label>
+        <input id="teacherName" placeholder="例：三谷" />
+      </div>
+
+      <div>
+        <label style="margin-top:0">教員キー（teacher_key）</label>
+        <input id="teacherKey" placeholder="設定で管理しているキー" />
+        <div class="mini">※ localStorage に保存します（同じPC/ブラウザで保持）。</div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:12px">
+      <button class="btn2 gray" id="btnSaveTeacher">保存</button>
+      <button class="btn2 red" id="btnClearTeacher">クリア</button>
+      <span id="teacherMsg" class="muted"></span>
+    </div>
+  </div>
+
+  <!-- 投稿フォーム -->
+  <div class="card">
+    <h2>新しい投稿</h2>
+
+    <label>名前</label>
+    <input id="name" placeholder="例：楊旻" />
+
+    <label>クラス</label>
+    <input id="class_name" placeholder="例：ITE2" />
+
+    <label>授業日</label>
+    <input id="lesson_date" type="date" />
+
+    <label>授業名 / テーマ</label>
+    <input id="topic" placeholder="例：SQL 外部結合" />
+
+    <label>1行目</label>
+    <textarea id="line1"></textarea>
+
+    <label>2行目</label>
+    <textarea id="line2"></textarea>
+
+    <label>3行目</label>
+    <textarea id="line3"></textarea>
+
+    <button id="submitBtn">投稿する</button>
+
+    <pre id="result"></pre>
+  </div>
+
+  <!-- 投稿一覧 -->
+  <div class="card">
+    <h2>投稿一覧</h2>
+    <div class="status" id="status">読み込み中…</div>
+    <div id="list"></div>
+  </div>
+
+<script>
+/* ===============================
+   共通ユーティリティ
+================================ */
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function fmtCount(v){
+  const n = Number(v);
+  if (Number.isFinite(n)) return n;
+  return 0;
+}
+
+function nowIso(){
+  return new Date().toISOString();
+}
+
+function getTeacherState(){
+  return {
+    enabled: document.getElementById("teacherMode").checked,
+    name: (document.getElementById("teacherName").value || "").trim(),
+    key: (document.getElementById("teacherKey").value || "").trim(),
+  };
+}
+
+function applyTeacherStateToUI(){
+  const st = getTeacherState();
+  const stateEl = document.getElementById("teacherModeState");
+  stateEl.textContent = st.enabled ? "ON" : "OFF";
+  stateEl.className = st.enabled ? "ok" : "muted";
+}
+
+function showTeacherMsg(text, kind="muted"){
+  const el = document.getElementById("teacherMsg");
+  el.textContent = text;
+  el.className = kind;
+}
+
+async function api(url, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  // 教員操作はヘッダにキーを付与（存在する場合）
+  const t = getTeacherState();
+  if (t.key) headers["X-Teacher-Key"] = t.key;
+
+  const res = await fetch(url, { ...options, headers });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${text}`);
+  }
+  if (data && typeof data === "object" && data.ok === false) {
+    throw new Error(data.error || "API error");
+  }
+  return data;
+}
+
+/* ===============================
+   投稿一覧の取得
+================================ */
+async function refreshPosts() {
+  const status = document.getElementById("status");
+  const list = document.getElementById("list");
+
+  status.textContent = "読み込み中…";
+  list.innerHTML = "";
+
+  try {
+    const data = await api("/api/posts?limit=20");
+    if (!data.ok) {
+      status.textContent = "取得失敗";
+      return;
+    }
+    status.textContent = `取得件数：${data.items.length}`;
+    for (const p of data.items) {
+      list.appendChild(renderPost(p));
+    }
+    applyTeacherStateToUI();
+  } catch (e) {
+    status.textContent = "エラー（Console を確認）";
+    console.error(e);
+  }
+}
+
+/* ===============================
+   1件描画（いいね・コメントUI付き）
+================================ */
+function renderPost(p) {
+  const div = document.createElement("div");
+  div.className = "post";
+  div.dataset.postId = String(p.id);
+
+  const likeCount = fmtCount(p.like_count ?? p.likeCount ?? 0);
+  const commentCount = fmtCount(p.comment_count ?? p.commentCount ?? 0);
+
+  div.innerHTML = `
+    <div class="meta">
+      👤 ${escapeHtml(p.name || "?")}
+      ｜🏫 ${escapeHtml(p.class_name || "-")}
+      ｜📅 ${escapeHtml(p.lesson_date || "-")}
+      ｜🕒 ${escapeHtml(p.created_at || "-")}
+    </div>
+    <div><strong>${escapeHtml(p.topic || "")}</strong></div>
+    <ol class="lines">
+      <li>${escapeHtml(p.line1 || "")}</li>
+      <li>${escapeHtml(p.line2 || "")}</li>
+      <li>${escapeHtml(p.line3 || "")}</li>
+    </ol>
+
+    <div class="actions">
+      <span class="count" title="いいね数">👍 <span class="likeCount">${likeCount}</span></span>
+      <span class="count" title="コメント数">💬 <span class="commentCount">${commentCount}</span></span>
+
+      <button class="btn2 gray btnToggleComments">コメントを見る</button>
+
+      <button class="btn2 btnLike" disabled>いいね</button>
+      <button class="btn2 gray btnUnlike" disabled>取消</button>
+
+      <span class="muted lastCommented">${p.last_commented_at ? ("最終コメント: " + escapeHtml(p.last_commented_at)) : ""}</span>
+    </div>
+
+    <div class="comments" style="display:none">
+      <div class="muted commentsStatus">コメントを読み込みます…</div>
+      <div class="commentList"></div>
+
+      <div class="commentNew" style="margin-top:12px;display:none">
+        <label style="font-weight:700;margin-top:0">教員コメントを追加</label>
+        <textarea class="newBody" placeholder="先生のフィードバックを入力してください"></textarea>
+        <div class="inlineBtns">
+          <button class="btn2 btnAddComment">コメント投稿</button>
+        </div>
+        <div class="mini">※ 教員モードON & 教員名/キーが必要です。</div>
+      </div>
+
+      <div class="err commentErr" style="margin-top:10px;display:none"></div>
+    </div>
+  `;
+
+  // attach behaviors
+  wirePostActions(div, p);
+  return div;
+}
+
+function wirePostActions(div, p){
+  const postId = Number(p.id);
+  const btnToggle = div.querySelector(".btnToggleComments");
+  const commentsBox = div.querySelector(".comments");
+  const commentsStatus = div.querySelector(".commentsStatus");
+  const commentList = div.querySelector(".commentList");
+  const commentNew = div.querySelector(".commentNew");
+  const commentErr = div.querySelector(".commentErr");
+
+  const btnLike = div.querySelector(".btnLike");
+  const btnUnlike = div.querySelector(".btnUnlike");
+  const likeCountEl = div.querySelector(".likeCount");
+  const commentCountEl = div.querySelector(".commentCount");
+  const lastCommentedEl = div.querySelector(".lastCommented");
+
+  function updateTeacherButtons(){
+    const t = getTeacherState();
+    const ok = t.enabled && t.name && t.key;
+    btnLike.disabled = !ok;
+    btnUnlike.disabled = !ok;
+    commentNew.style.display = ok ? "" : "none";
+  }
+
+  updateTeacherButtons();
+
+  // Toggle comments
+  btnToggle.addEventListener("click", async () => {
+    const shown = commentsBox.style.display !== "none";
+    if (shown) {
+      commentsBox.style.display = "none";
+      btnToggle.textContent = "コメントを見る";
+      return;
+    }
+    commentsBox.style.display = "";
+    btnToggle.textContent = "閉じる";
+    commentErr.style.display = "none";
+    commentErr.textContent = "";
+
+    // load comments
+    commentsStatus.textContent = "コメントを読み込み中…";
+    commentList.innerHTML = "";
+    try{
+      const data = await api(`/api/posts/${postId}/comments`);
+      const items = data.items ?? data.comments ?? data.results ?? [];
+      if (items.length === 0) {
+        commentsStatus.textContent = "コメントはまだありません。";
+      } else {
+        commentsStatus.textContent = `コメント：${items.length}件`;
+      }
+      renderComments(commentList, items, postId, {
+        onCountsChanged: (newCount, newLastAt) => {
+          commentCountEl.textContent = String(newCount);
+          if (newLastAt) lastCommentedEl.textContent = "最終コメント: " + newLastAt;
+        }
+      });
+    }catch(e){
+      commentsStatus.textContent = "コメント取得エラー";
+      commentErr.style.display = "";
+      commentErr.textContent = String(e?.message || e);
+    }
+
+    updateTeacherButtons();
+  });
+
+  // Like
+  btnLike.addEventListener("click", async () => {
+    const t = getTeacherState();
+    commentErr.style.display = "none";
+    commentErr.textContent = "";
+    btnLike.disabled = true;
+    try{
+      const data = await api(`/api/posts/${postId}/like`, {
+        method: "POST",
+        body: JSON.stringify({ teacher_name: t.name })
+      });
+      // expect: { ok:true, like_count: n } or similar
+      const newCount = fmtCount(data.like_count ?? data.likeCount ?? data.count ?? data.value ?? likeCountEl.textContent);
+      likeCountEl.textContent = String(newCount);
+      showTeacherMsg("いいねしました", "ok");
+    }catch(e){
+      commentErr.style.display = "";
+      commentErr.textContent = String(e?.message || e);
+    }finally{
+      updateTeacherButtons();
+    }
+  });
+
+  // Unlike
+  btnUnlike.addEventListener("click", async () => {
+    const t = getTeacherState();
+    commentErr.style.display = "none";
+    commentErr.textContent = "";
+    btnUnlike.disabled = true;
+    try{
+      const data = await api(`/api/posts/${postId}/like?teacher_name=${encodeURIComponent(t.name)}`, {
+        method: "DELETE"
+      });
+      const newCount = fmtCount(data.like_count ?? data.likeCount ?? data.count ?? data.value ?? likeCountEl.textContent);
+      likeCountEl.textContent = String(newCount);
+      showTeacherMsg("いいねを取り消しました", "ok");
+    }catch(e){
+      commentErr.style.display = "";
+      commentErr.textContent = String(e?.message || e);
+    }finally{
+      updateTeacherButtons();
+    }
+  });
+
+  // Add comment
+  div.querySelector(".btnAddComment").addEventListener("click", async () => {
+    const t = getTeacherState();
+    const bodyEl = div.querySelector(".newBody");
+    const body = (bodyEl.value || "").trim();
+    commentErr.style.display = "none";
+    commentErr.textContent = "";
+
+    if (!(t.enabled && t.name && t.key)) {
+      commentErr.style.display = "";
+      commentErr.textContent = "教員モードON、教員名と教員キーが必要です。";
+      return;
+    }
+    if (!body) {
+      commentErr.style.display = "";
+      commentErr.textContent = "コメント本文が空です。";
+      return;
+    }
+
+    const btn = div.querySelector(".btnAddComment");
+    btn.disabled = true;
+    try{
+      const data = await api(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ teacher_name: t.name, body })
+      });
+      bodyEl.value = "";
+
+      // reload comments for correctness
+      const data2 = await api(`/api/posts/${postId}/comments`);
+      const items = data2.items ?? data2.comments ?? data2.results ?? [];
+      div.querySelector(".commentList").innerHTML = "";
+      renderComments(div.querySelector(".commentList"), items, postId, {
+        onCountsChanged: (newCount, newLastAt) => {
+          commentCountEl.textContent = String(newCount);
+          if (newLastAt) lastCommentedEl.textContent = "最終コメント: " + newLastAt;
+        }
+      });
+
+      const newCount = fmtCount(data.comment_count ?? data.commentCount ?? items.length);
+      commentCountEl.textContent = String(newCount);
+      lastCommentedEl.textContent = "最終コメント: " + (data.last_commented_at ?? nowIso());
+      showTeacherMsg("コメントを投稿しました", "ok");
+    }catch(e){
+      commentErr.style.display = "";
+      commentErr.textContent = String(e?.message || e);
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // Teacher mode changes should update buttons
+  document.getElementById("teacherMode").addEventListener("change", updateTeacherButtons);
+  document.getElementById("teacherName").addEventListener("input", updateTeacherButtons);
+  document.getElementById("teacherKey").addEventListener("input", updateTeacherButtons);
+}
+
+/* ===============================
+   コメント描画（編集/削除つき）
+================================ */
+function renderComments(container, items, postId, { onCountsChanged } = {}){
+  const t = getTeacherState();
+  const enabled = t.enabled && t.name && t.key;
+
+  let lastAt = "";
+  for (const c of items) {
+    if (c.created_at && (!lastAt || c.created_at > lastAt)) lastAt = c.created_at;
+  }
+  if (onCountsChanged) onCountsChanged(items.length, lastAt);
+
+  items.forEach(c => {
+    const mine = enabled && (String(c.teacher_name || "") === String(t.name));
+    const wrap = document.createElement("div");
+    wrap.className = "commentItem";
+    wrap.dataset.commentId = String(c.id);
+
+    wrap.innerHTML = `
+      <div class="commentMeta">
+        <div>👩‍🏫 ${escapeHtml(c.teacher_name || "?")} ｜ 🕒 ${escapeHtml(c.created_at || "-")}${c.updated_at ? (" ｜ ✏️ " + escapeHtml(c.updated_at)) : ""}</div>
+        <div class="inlineBtns" style="margin-top:0">
+          ${mine ? `<button class="btn2 gray btnEdit">編集</button>` : ``}
+          ${mine ? `<button class="btn2 red btnDelete">削除</button>` : ``}
+        </div>
+      </div>
+
+      <div class="commentBody">${escapeHtml(c.body || "")}</div>
+
+      <div class="commentEdit" style="display:none">
+        <label style="font-weight:700;margin-top:8px">編集</label>
+        <textarea class="editBody"></textarea>
+        <div class="inlineBtns">
+          <button class="btn2 btnSaveEdit">保存</button>
+          <button class="btn2 gray btnCancelEdit">取消</button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(wrap);
+
+    if (!mine) return;
+
+    const btnEdit = wrap.querySelector(".btnEdit");
+    const btnDelete = wrap.querySelector(".btnDelete");
+    const editBox = wrap.querySelector(".commentEdit");
+    const bodyDiv = wrap.querySelector(".commentBody");
+    const editTa = wrap.querySelector(".editBody");
+    const btnSave = wrap.querySelector(".btnSaveEdit");
+    const btnCancel = wrap.querySelector(".btnCancelEdit");
+
+    btnEdit.addEventListener("click", () => {
+      editTa.value = (c.body || "");
+      editBox.style.display = "";
+      bodyDiv.style.display = "none";
+    });
+
+    btnCancel.addEventListener("click", () => {
+      editBox.style.display = "none";
+      bodyDiv.style.display = "";
+    });
+
+    btnSave.addEventListener("click", async () => {
+      const st = getTeacherState();
+      const newBody = (editTa.value || "").trim();
+      if (!newBody) {
+        alert("本文が空です。");
+        return;
+      }
+      btnSave.disabled = true;
+      try{
+        const data = await api(`/api/comments/${c.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ teacher_name: st.name, body: newBody })
+        });
+        // update UI
+        c.body = newBody;
+        c.updated_at = data.updated_at ?? nowIso();
+        bodyDiv.textContent = newBody;
+        editBox.style.display = "none";
+        bodyDiv.style.display = "";
+        showTeacherMsg("コメントを更新しました", "ok");
+      }catch(e){
+        alert(String(e?.message || e));
+      }finally{
+        btnSave.disabled = false;
+      }
+    });
+
+    btnDelete.addEventListener("click", async () => {
+      const st = getTeacherState();
+      if (!confirm("このコメントを削除しますか？（復元不可）")) return;
+      btnDelete.disabled = true;
+      try{
+        await api(`/api/comments/${c.id}?teacher_name=${encodeURIComponent(st.name)}`, {
+          method: "DELETE"
+        });
+        wrap.remove();
+        // counts will be re-evaluated by caller after reload; but we can do a quick decrement
+        showTeacherMsg("コメントを削除しました", "ok");
+      }catch(e){
+        alert(String(e?.message || e));
+      }finally{
+        btnDelete.disabled = false;
+      }
+    });
+  });
+}
+
+/* ===============================
+   投稿処理
+================================ */
+document.getElementById("submitBtn").addEventListener("click", async () => {
+  const body = {
+    name: document.getElementById("name").value,
+    class_name: document.getElementById("class_name").value,
+    lesson_date: document.getElementById("lesson_date").value,
+    topic: document.getElementById("topic").value,
+    line1: document.getElementById("line1").value,
+    line2: document.getElementById("line2").value,
+    line3: document.getElementById("line3").value
+  };
+
+  const out = document.getElementById("result");
+  out.textContent = "送信中…";
+
+  try {
+    const res = await api("/api/posts", {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+
+    out.textContent = JSON.stringify(res, null, 2);
+    await refreshPosts();
+  } catch (e) {
+    out.textContent = String(e?.message || e);
+  }
+});
+
+/* ===============================
+   教員モード：localStorage
+================================ */
+function loadTeacherFromStorage(){
+  try{
+    const raw = localStorage.getItem("three_lines_teacher");
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    document.getElementById("teacherMode").checked = !!obj.enabled;
+    document.getElementById("teacherName").value = obj.name || "";
+    document.getElementById("teacherKey").value = obj.key || "";
+  }catch{}
+  applyTeacherStateToUI();
+}
+function saveTeacherToStorage(){
+  const st = getTeacherState();
+  localStorage.setItem("three_lines_teacher", JSON.stringify(st));
+  applyTeacherStateToUI();
+}
+
+document.getElementById("btnSaveTeacher").addEventListener("click", () => {
+  const st = getTeacherState();
+  if (st.enabled && (!st.name || !st.key)) {
+    showTeacherMsg("教員モードONには「教員名」と「教員キー」が必要です。", "warn");
+    return;
+  }
+  saveTeacherToStorage();
+  showTeacherMsg("保存しました。", "ok");
+});
+
+document.getElementById("btnClearTeacher").addEventListener("click", () => {
+  localStorage.removeItem("three_lines_teacher");
+  document.getElementById("teacherMode").checked = false;
+  document.getElementById("teacherName").value = "";
+  document.getElementById("teacherKey").value = "";
+  applyTeacherStateToUI();
+  showTeacherMsg("クリアしました。", "ok");
+});
+
+document.getElementById("teacherMode").addEventListener("change", () => {
+  applyTeacherStateToUI();
+  saveTeacherToStorage();
+});
+document.getElementById("teacherName").addEventListener("input", () => saveTeacherToStorage());
+document.getElementById("teacherKey").addEventListener("input", () => saveTeacherToStorage());
+
+/* ===============================
+   初期化
+================================ */
+document.getElementById("lesson_date").value =
+  new Date().toISOString().slice(0,10);
+
+loadTeacherFromStorage();
+refreshPosts();
+</script>
+
+</body>
+</html>

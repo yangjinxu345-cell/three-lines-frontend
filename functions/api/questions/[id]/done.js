@@ -11,8 +11,9 @@ export async function onRequest(context) {
     if (!Number.isFinite(id)) return json({ ok: false, error: "Invalid id" }, 400, headers);
 
     if (request.method === "POST") {
+      // 先不做答案校验，完成即可（最省时间）
       await env.DB.prepare(`
-        UPDATE reminders
+        UPDATE quizzes
         SET done = 1, done_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(id).run();

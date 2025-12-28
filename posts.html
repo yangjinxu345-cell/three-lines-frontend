@@ -14,9 +14,7 @@
       padding: 24px;
     }
 
-    h1 {
-      margin-bottom: 12px;
-    }
+    h1 { margin-bottom: 12px; }
 
     .card {
       background: #fff;
@@ -32,7 +30,7 @@
       font-weight: 600;
     }
 
-    input, textarea, button {
+    input, textarea, button, select {
       width: 100%;
       margin-top: 6px;
       padding: 10px;
@@ -53,10 +51,7 @@
       border-radius: 8px;
       cursor: pointer;
     }
-
-    button:hover {
-      background: #1d4ed8;
-    }
+    button:hover { background: #1d4ed8; }
 
     .post {
       border-top: 1px solid #eee;
@@ -69,14 +64,12 @@
       margin-bottom: 6px;
     }
 
-    .lines li {
-      margin-left: 18px;
-    }
+    .lines li { margin-left: 18px; }
 
     .status {
       margin-bottom: 12px;
       font-size: 14px;
-      color: green;
+      color: #0b5ed7;
     }
 
     pre {
@@ -85,173 +78,12 @@
       padding: 10px;
       overflow-x: auto;
       font-size: 12px;
+      border-radius: 10px;
     }
 
-    .nav {
-      margin-bottom: 16px;
-    }
+    .nav { margin-bottom: 16px; }
+    .nav a { text-decoration: none; color: #2563eb; }
 
-    .nav a {
-      text-decoration: none;
-      color: #2563eb;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="nav">
-    <a href="index.html">← 戻る（メニュー）</a>
-  </div>
-
-  <h1>3行投稿</h1>
-
-  <!-- 投稿フォーム -->
-  <div class="card">
-    <h2>新しい投稿</h2>
-
-    <label>名前</label>
-    <input id="name" placeholder="例：楊旻" />
-
-    <label>クラス</label>
-    <input id="class_name" placeholder="例：ITE2" />
-
-    <label>授業日</label>
-    <input id="lesson_date" type="date" />
-
-    <label>授業名 / テーマ</label>
-    <input id="topic" placeholder="例：SQL 外部結合" />
-
-    <label>1行目</label>
-    <textarea id="line1"></textarea>
-
-    <label>2行目</label>
-    <textarea id="line2"></textarea>
-
-    <label>3行目</label>
-    <textarea id="line3"></textarea>
-
-    <button id="submitBtn">投稿する</button>
-
-    <pre id="result"></pre>
-  </div>
-
-  <!-- 投稿一覧 -->
-  <div class="card">
-    <h2>投稿一覧</h2>
-    <div class="status" id="status">読み込み中…</div>
-    <div id="list"></div>
-  </div>
-
-<script>
-/* ===============================
-   共通ユーティリティ
-================================ */
-async function api(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
-    ...options
-  });
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(text);
-  }
-}
-
-/* ===============================
-   投稿一覧の取得
-================================ */
-async function refreshPosts() {
-  const status = document.getElementById("status");
-  const list = document.getElementById("list");
-
-  status.textContent = "読み込み中…";
-  list.innerHTML = "";
-
-  try {
-    const data = await api("/api/posts?limit=20");
-
-    if (!data.ok) {
-      status.textContent = "取得失敗";
-      return;
-    }
-
-    status.textContent = `取得件数：${data.items.length}`;
-
-    for (const p of data.items) {
-      list.appendChild(renderPost(p));
-    }
-  } catch (e) {
-    status.textContent = "エラー";
-    console.error(e);
-  }
-}
-
-/* ===============================
-   1件描画
-================================ */
-function renderPost(p) {
-  const div = document.createElement("div");
-  div.className = "post";
-
-  div.innerHTML = `
-    <div class="meta">
-      👤 ${p.name || "?"}
-      ｜🏫 ${p.class_name || "-"}
-      ｜📅 ${p.lesson_date}
-      ｜🕒 ${p.created_at}
-    </div>
-    <div><strong>${p.topic || ""}</strong></div>
-    <ol class="lines">
-      <li>${p.line1}</li>
-      <li>${p.line2}</li>
-      <li>${p.line3}</li>
-    </ol>
-  `;
-
-  return div;
-}
-
-/* ===============================
-   投稿処理
-================================ */
-document.getElementById("submitBtn").addEventListener("click", async () => {
-  const body = {
-    name: document.getElementById("name").value,
-    class_name: document.getElementById("class_name").value,
-    lesson_date: document.getElementById("lesson_date").value,
-    topic: document.getElementById("topic").value,
-    line1: document.getElementById("line1").value,
-    line2: document.getElementById("line2").value,
-    line3: document.getElementById("line3").value
-  };
-
-  const out = document.getElementById("result");
-  out.textContent = "送信中…";
-
-  try {
-    const res = await api("/api/posts", {
-      method: "POST",
-      body: JSON.stringify(body)
-    });
-
-    out.textContent = JSON.stringify(res, null, 2);
-
-    await refreshPosts(); // ← ここ重要
-  } catch (e) {
-    out.textContent = String(e);
-  }
-});
-
-/* ===============================
-   初期化
-================================ */
-document.getElementById("lesson_date").value =
-  new Date().toISOString().slice(0,10);
-
-refreshPosts();
-</script>
-
-</body>
-</html>
+    /* ====== teacher mode ====== */
+    .row {
+      display: flex;

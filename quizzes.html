@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>クイズ | 3行アプリ</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header class="sub-hero">
+    <div class="sub-hero-inner">
+      <a class="backlink" href="/index.html">← メニュー</a>
+      <h1 class="sub-hero-title">クイズ</h1>
+      <p class="sub-hero-subtitle">思い出しクイズで理解を定着</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="row row-between row-center">
+        <h2 class="card-title">クイズ一覧</h2>
+        <button class="btn" id="btnQuizzesRefresh">更新</button>
+      </div>
+
+      <div class="row row-between row-center mt-sm">
+        <div class="row row-center gap-sm">
+          <span id="apiDot" class="dot dot-gray"></span>
+          <span id="apiText" class="muted">checking...</span>
+        </div>
+        <span class="muted" id="quizzesCount">0件</span>
+      </div>
+
+      <div id="quizzesRoot" class="stack mt-md"></div>
+    </section>
+  </main>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/quizzes.js"></script>
+  <script>
+    if (typeof initQuizzesPage === "function") {
+      initQuizzesPage({
+        apiDotId: "apiDot",
+        apiTextId: "apiText",
+        countId: "quizzesCount",
+        rootId: "quizzesRoot",
+        refreshBtnId: "btnQuizzesRefresh",
+      });
+    }
+  </script>
+</body>
+</html>

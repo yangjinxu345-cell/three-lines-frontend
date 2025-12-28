@@ -3,49 +3,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ランキング | 3行アプリ</title>
-  <link rel="stylesheet" href="/assets/app.css" />
+  <title>ランキング</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb}
+    header{background:#0b5ed7;color:#fff;padding:24px 16px}
+    .wrap{max-width:900px;margin:0 auto}
+    a{color:#fff;text-decoration:none;font-weight:700}
+    main{padding:18px 16px}
+    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .btn{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
+    .muted{color:#666}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #eef1f7;padding:10px;text-align:left}
+    th{color:#555;font-size:12px}
+  </style>
 </head>
 <body>
-  <header class="sub-hero">
-    <div class="sub-hero-inner">
-      <a class="backlink" href="/index.html">← メニュー</a>
-      <h1 class="sub-hero-title">ランキング</h1>
-      <p class="sub-hero-subtitle">投稿・回答の貢献度（任意）</p>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+        <h1 style="margin:6px 0 0">ランキング</h1>
+      </div>
+      <button class="btn" id="btn">更新</button>
     </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <div class="row row-between row-center">
-        <h2 class="card-title">貢献度</h2>
-        <button class="btn" id="btnRankingRefresh">更新</button>
-      </div>
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <h2 style="margin:0">投稿数</h2>
+        <div class="muted" id="meta1">—</div>
+        <div id="posts"></div>
 
-      <div class="row row-between row-center mt-sm">
-        <div class="row row-center gap-sm">
-          <span id="apiDot" class="dot dot-gray"></span>
-          <span id="apiText" class="muted">checking...</span>
-        </div>
-        <span class="muted" id="rankingMeta">—</span>
-      </div>
+        <hr style="border:none;border-top:1px solid #eef1f7;margin:16px 0">
 
-      <div id="rankingRoot" class="stack mt-md"></div>
-    </section>
+        <h2 style="margin:0">回答数</h2>
+        <div class="muted" id="meta2">—</div>
+        <div id="answers"></div>
+      </div>
+    </div>
   </main>
 
-  <script src="/assets/common.js"></script>
-  <script src="/assets/ranking.js"></script>
   <script>
-    if (typeof initRankingPage === "function") {
-      initRankingPage({
-        apiDotId: "apiDot",
-        apiTextId: "apiText",
-        metaId: "rankingMeta",
-        rootId: "rankingRoot",
-        refreshBtnId: "btnRankingRefresh",
-      });
+    async function api(path,opt={}){
+      const res = await fetch(path,opt);
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data=text; }
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      return data;
     }
+    function renderTable(arr){
+      const rows = arr || [];
+      const html = `
+        <table>
+          <thead><tr><th>名前</th><th>回数</th></tr></thead>
+          <tbody>
+            ${rows.map(r=>`<tr><td>${escapeHtml(r.name ?? "")}</td><td>${escapeHtml(r.cnt ?? r.count ?? "")}</td></tr>`).join("")}
+          </tbody>
+        </table>`;
+      return html;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    async function refresh(){
+      const data = await api("/api/ranking");
+      document.getElementById("posts").innerHTML = renderTable(data.posts || []);
+      document.getElementById("answers").innerHTML = renderTable(data.answers || []);
+      document.getElementById("meta1").textContent = `${(data.posts||[]).length}人`;
+      document.getElementById("meta2").textContent = `${(data.answers||[]).length}人`;
+    }
+    document.getElementById("btn").addEventListener("click", refresh);
+    refresh();
   </script>
 </body>
 </html>

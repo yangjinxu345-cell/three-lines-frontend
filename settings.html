@@ -3,48 +3,87 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>設定 | 3行アプリ</title>
-  <link rel="stylesheet" href="/assets/app.css" />
+  <title>設定</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb}
+    header{background:#0b5ed7;color:#fff;padding:24px 16px}
+    .wrap{max-width:900px;margin:0 auto}
+    a{color:#fff;text-decoration:none;font-weight:700}
+    main{padding:18px 16px}
+    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    label{display:block;font-size:12px;color:#666;margin:10px 0 6px}
+    input,textarea{width:100%;padding:10px 12px;border:1px solid #e6e9f2;border-radius:12px;font-size:14px}
+    textarea{min-height:120px}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
+    .btn{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
+    .btn.gray{background:#495057}
+    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto}
+  </style>
 </head>
 <body>
-  <header class="sub-hero">
-    <div class="sub-hero-inner">
-      <a class="backlink" href="/index.html">← メニュー</a>
-      <h1 class="sub-hero-title">設定</h1>
-      <p class="sub-hero-subtitle">表示・動作の設定</p>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+        <h1 style="margin:6px 0 0">設定</h1>
+      </div>
+      <div style="opacity:.9">/api/settings</div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <div class="row row-between row-center">
-        <h2 class="card-title">設定</h2>
-        <button class="btn" id="btnSettingsRefresh">更新</button>
-      </div>
-
-      <div class="row row-between row-center mt-sm">
-        <div class="row row-center gap-sm">
-          <span id="apiDot" class="dot dot-gray"></span>
-          <span id="apiText" class="muted">checking...</span>
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <div class="row">
+          <h2 style="margin:0">設定データ</h2>
+          <div style="display:flex;gap:10px">
+            <button class="btn gray" id="btnLoad">読み込み</button>
+            <button class="btn" id="btnSave">保存（POST）</button>
+          </div>
         </div>
-        <span class="muted">Pages Functions</span>
-      </div>
 
-      <div id="settingsRoot" class="stack mt-md"></div>
-    </section>
+        <label>JSON</label>
+        <textarea id="json" placeholder='{"example":true}'></textarea>
+
+        <pre id="out">{}</pre>
+      </div>
+    </div>
   </main>
 
-  <script src="/assets/common.js"></script>
-  <script src="/assets/settings.js"></script>
   <script>
-    if (typeof initSettingsPage === "function") {
-      initSettingsPage({
-        apiDotId: "apiDot",
-        apiTextId: "apiText",
-        rootId: "settingsRoot",
-        refreshBtnId: "btnSettingsRefresh",
-      });
+    async function api(path,opt={}){
+      const res = await fetch(path,opt);
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data=text; }
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      return data;
     }
+    async function load(){
+      const out=document.getElementById("out");
+      out.textContent="loading...";
+      try{
+        const data = await api("/api/settings");
+        document.getElementById("json").value = JSON.stringify(data,null,2);
+        out.textContent="ok";
+      }catch(e){ out.textContent=String(e); }
+    }
+    async function save(){
+      const out=document.getElementById("out");
+      out.textContent="saving...";
+      try{
+        const txt = document.getElementById("json").value;
+        const payload = JSON.parse(txt);
+        const data = await api("/api/settings",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+        out.textContent = JSON.stringify(data,null,2);
+      }catch(e){ out.textContent=String(e); }
+    }
+    document.getElementById("btnLoad").addEventListener("click", load);
+    document.getElementById("btnSave").addEventListener("click", save);
+    load();
   </script>
 </body>
 </html>

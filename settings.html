@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>設定 | 3行アプリ</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header class="sub-hero">
+    <div class="sub-hero-inner">
+      <a class="backlink" href="/index.html">← メニュー</a>
+      <h1 class="sub-hero-title">設定</h1>
+      <p class="sub-hero-subtitle">表示・動作の設定</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="row row-between row-center">
+        <h2 class="card-title">設定</h2>
+        <button class="btn" id="btnSettingsRefresh">更新</button>
+      </div>
+
+      <div class="row row-between row-center mt-sm">
+        <div class="row row-center gap-sm">
+          <span id="apiDot" class="dot dot-gray"></span>
+          <span id="apiText" class="muted">checking...</span>
+        </div>
+        <span class="muted">Pages Functions</span>
+      </div>
+
+      <div id="settingsRoot" class="stack mt-md"></div>
+    </section>
+  </main>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/settings.js"></script>
+  <script>
+    if (typeof initSettingsPage === "function") {
+      initSettingsPage({
+        apiDotId: "apiDot",
+        apiTextId: "apiText",
+        rootId: "settingsRoot",
+        refreshBtnId: "btnSettingsRefresh",
+      });
+    }
+  </script>
+</body>
+</html>

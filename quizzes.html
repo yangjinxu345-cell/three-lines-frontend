@@ -3,49 +3,93 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>クイズ | 3行アプリ</title>
-  <link rel="stylesheet" href="/assets/app.css" />
+  <title>クイズ</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb}
+    header{background:#0b5ed7;color:#fff;padding:24px 16px}
+    .wrap{max-width:1000px;margin:0 auto}
+    a{color:#fff;text-decoration:none;font-weight:700}
+    main{padding:18px 16px}
+    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .btn{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
+    .btn.gray{background:#495057}
+    .muted{color:#666}
+    .item{border:1px solid #eef1f7;border-radius:14px;padding:12px;margin-top:10px}
+    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto}
+  </style>
 </head>
 <body>
-  <header class="sub-hero">
-    <div class="sub-hero-inner">
-      <a class="backlink" href="/index.html">← メニュー</a>
-      <h1 class="sub-hero-title">クイズ</h1>
-      <p class="sub-hero-subtitle">思い出しクイズで理解を定着</p>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+        <h1 style="margin:6px 0 0">クイズ</h1>
+      </div>
+      <div class="muted" style="color:#dbe7ff">/api/quizzes</div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <div class="row row-between row-center">
-        <h2 class="card-title">クイズ一覧</h2>
-        <button class="btn" id="btnQuizzesRefresh">更新</button>
-      </div>
-
-      <div class="row row-between row-center mt-sm">
-        <div class="row row-center gap-sm">
-          <span id="apiDot" class="dot dot-gray"></span>
-          <span id="apiText" class="muted">checking...</span>
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <div class="row">
+          <h2 style="margin:0">クイズ一覧</h2>
+          <div style="display:flex;gap:10px">
+            <button class="btn gray" id="btnGenerate">生成（POST）</button>
+            <button class="btn" id="btnRefresh">更新</button>
+          </div>
         </div>
-        <span class="muted" id="quizzesCount">0件</span>
-      </div>
+        <div class="row" style="margin-top:8px">
+          <span class="muted"><span id="count">0</span>件</span>
+          <span class="muted">※ 生成が不要なら「更新」だけ使う</span>
+        </div>
 
-      <div id="quizzesRoot" class="stack mt-md"></div>
-    </section>
+        <div id="list"></div>
+        <pre id="out" style="margin-top:12px">{}</pre>
+      </div>
+    </div>
   </main>
 
-  <script src="/assets/common.js"></script>
-  <script src="/assets/quizzes.js"></script>
   <script>
-    if (typeof initQuizzesPage === "function") {
-      initQuizzesPage({
-        apiDotId: "apiDot",
-        apiTextId: "apiText",
-        countId: "quizzesCount",
-        rootId: "quizzesRoot",
-        refreshBtnId: "btnQuizzesRefresh",
-      });
+    async function api(path,opt={}){
+      const res = await fetch(path,opt);
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data=text; }
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      return data;
     }
+    function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function render(q){
+      const el=document.createElement("div");
+      el.className="item";
+      el.innerHTML = `
+        <div><b>${esc(q.question ?? q.title ?? "Quiz")}</b></div>
+        <div style="margin-top:6px;color:#666">${esc(q.answer ?? q.correct ?? q.explain ?? "")}</div>
+        <div style="margin-top:8px;color:#999;font-size:12px">#${esc(q.id ?? "")} ${esc(q.due ?? q.created_at ?? "")}</div>
+      `;
+      return el;
+    }
+    async function refresh(){
+      const data = await api("/api/quizzes?limit=50");
+      const items = data.items || [];
+      document.getElementById("count").textContent = items.length;
+      const list=document.getElementById("list");
+      list.innerHTML="";
+      items.forEach(x=> list.appendChild(render(x)));
+      document.getElementById("out").textContent = JSON.stringify(data,null,2);
+    }
+    document.getElementById("btnRefresh").addEventListener("click", refresh);
+    document.getElementById("btnGenerate").addEventListener("click", async ()=>{
+      const out=document.getElementById("out");
+      out.textContent="POST /api/quizzes ...";
+      try{
+        const data = await api("/api/quizzes", { method:"POST" });
+        out.textContent = JSON.stringify(data,null,2);
+        await refresh();
+      }catch(e){ out.textContent=String(e); }
+    });
+    refresh();
   </script>
 </body>
 </html>

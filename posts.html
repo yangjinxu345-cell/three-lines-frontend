@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3行投稿 | 3行アプリ</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header class="sub-hero">
+    <div class="sub-hero-inner">
+      <a class="backlink" href="/index.html">← メニュー</a>
+      <h1 class="sub-hero-title">3行投稿</h1>
+      <p class="sub-hero-subtitle">授業内容を3行でまとめて投稿</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ここは posts.js が描画してもよいし、既存のDOMを使ってもOK -->
+    <section class="grid grid-2">
+      <div class="card" id="postsFormCard">
+        <h2 class="card-title">3行まとめ投稿</h2>
+        <div id="postsFormRoot"></div>
+      </div>
+
+      <div class="card" id="postsListCard">
+        <div class="row row-between row-center">
+          <h2 class="card-title">みんなの投稿（D1）</h2>
+          <button class="btn" id="btnPostsRefresh">更新</button>
+        </div>
+
+        <div class="row row-between row-center mt-sm">
+          <div class="row row-center gap-sm">
+            <span id="apiDot" class="dot dot-gray"></span>
+            <span id="apiText" class="muted">checking...</span>
+          </div>
+          <span class="pill">Base <code>/api/*</code></span>
+        </div>
+
+        <div class="row row-between row-center mt-sm">
+          <span class="muted" id="postsCount">0件</span>
+          <span class="muted">保存先：D1（Pages Functions）</span>
+        </div>
+
+        <div id="postsListRoot" class="stack mt-md"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/posts.js"></script>
+  <script>
+    // 约定：posts.js 提供 initPostsPage({ ...ids })
+    // 如果你 posts.js 不是这个函数名，你把下面改成你自己的入口函数即可
+    if (typeof initPostsPage === "function") {
+      initPostsPage({
+        apiDotId: "apiDot",
+        apiTextId: "apiText",
+        countId: "postsCount",
+        formRootId: "postsFormRoot",
+        listRootId: "postsListRoot",
+        refreshBtnId: "btnPostsRefresh",
+      });
+    }
+  </script>
+</body>
+</html>

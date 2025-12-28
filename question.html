@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>質問詳細</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb}
+    header{background:#0b5ed7;color:#fff;padding:18px 16px}
+    .wrap{max-width:900px;margin:0 auto}
+    a{color:#fff;text-decoration:none;font-weight:700}
+    main{padding:18px 16px}
+    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+    .pill{background:#f1f3f7;border-radius:999px;padding:6px 10px;font-size:12px;color:#333}
+    .muted{color:#666}
+    label{display:block;font-size:12px;color:#666;margin:10px 0 6px}
+    input,textarea{width:100%;padding:10px 12px;border:1px solid #e6e9f2;border-radius:12px;font-size:14px}
+    textarea{min-height:80px;resize:vertical}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+    .btn{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
+    .btn.gray{background:#495057}
+    .ans{border:1px solid #eef1f7;border-radius:14px;padding:12px;margin-top:10px}
+    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="opacity:.95"><a href="/questions.html">← 質問一覧</a></div>
+        <h1 style="margin:6px 0 0">質問詳細</h1>
+      </div>
+      <div class="muted" style="color:#dbe7ff" id="qid"></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <h2 id="title" style="margin:0">...</h2>
+        <div class="meta" id="meta"></div>
+        <div id="body" class="muted"></div>
+
+        <div class="row">
+          <button class="btn" id="btnDone">✅ 解決にする</button>
+          <button class="btn gray" id="btnReload">更新</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eef1f7;margin:16px 0">
+
+        <h3 style="margin:0 0 10px">回答</h3>
+        <div id="answers"></div>
+
+        <hr style="border:none;border-top:1px solid #eef1f7;margin:16px 0">
+
+        <h3 style="margin:0 0 10px">回答を書く</h3>
+        <label>回答者</label>
+        <input id="answer_name" value="楊旻" />
+        <label>本文</label>
+        <textarea id="answer_body"></textarea>
+        <div class="row">
+          <div></div>
+          <button class="btn" id="btnAnswer">送信</button>
+        </div>
+
+        <pre id="out" style="margin-top:12px">{}</pre>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function qs(name){ return new URL(location.href).searchParams.get(name); }
+    const id = qs("id");
+    document.getElementById("qid").textContent = id ? `#${id}` : "";
+    if(!id){ alert("id がありません"); location.href="/questions.html"; }
+
+    async function api(path, opt={}){
+      const res = await fetch(path, opt);
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data = text;}
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      return data;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function load(){
+      const out=document.getElementById("out");
+      out.textContent="loading...";
+      const q = await api(`/api/questions/${encodeURIComponent(id)}`);
+      document.getElementById("title").textContent = q.title || "";
+      document.getElementById("body").textContent = q.body || "";
+      document.getElementById("meta").innerHTML = `
+        <span class="pill">👤 ${escapeHtml(q.name ?? "")}</span>
+        <span class="pill">🧩 ${escapeHtml(q.topic ?? "")}</span>
+        <span class="pill">🗓 ${escapeHtml(q.lesson_date ?? "")}</span>
+        <span class="pill">${q.is_done ? "✅ 解決" : "🟡 未解決"}</span>
+      `;
+
+      const ans = await api(`/api/questions/${encodeURIComponent(id)}/answers?limit=50`);
+      const list = document.getElementById("answers");
+      list.innerHTML="";
+      (ans.items||[]).forEach(a=>{
+        const el=document.createElement("div");
+        el.className="ans";
+        el.innerHTML = `
+          <div class="meta">
+            <span class="pill">👤 ${escapeHtml(a.name ?? "")}</span>
+            <span class="pill">🕒 ${escapeHtml(a.created_at ?? "")}</span>
+            <span class="pill">#${escapeHtml(a.id ?? "")}</span>
+          </div>
+          <div>${escapeHtml(a.body ?? "")}</div>
+        `;
+        list.appendChild(el);
+      });
+      out.textContent = "ok";
+    }
+
+    document.getElementById("btnReload").addEventListener("click", load);
+
+    document.getElementById("btnDone").addEventListener("click", async ()=>{
+      const out=document.getElementById("out");
+      out.textContent="marking done...";
+      try{
+        const data = await api(`/api/questions/${encodeURIComponent(id)}/done`, { method:"POST" });
+        out.textContent = JSON.stringify(data,null,2);
+        await load();
+      }catch(e){ out.textContent=String(e); }
+    });
+
+    document.getElementById("btnAnswer").addEventListener("click", async ()=>{
+      const out=document.getElementById("out");
+      out.textContent="sending answer...";
+      try{
+        const payload = {
+          name: document.getElementById("answer_name").value.trim(),
+          body: document.getElementById("answer_body").value.trim(),
+        };
+        const data = await api(`/api/questions/${encodeURIComponent(id)}/answers`,{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+        out.textContent = JSON.stringify(data,null,2);
+        document.getElementById("answer_body").value="";
+        await load();
+      }catch(e){ out.textContent=String(e); }
+    });
+
+    load();
+  </script>
+</body>
+</html>

@@ -4,85 +4,89 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
-  <link rel="stylesheet" href="/assets/app.css" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb;color:#111}
+    header{background:#0b5ed7;color:#fff;padding:48px 16px}
+    .wrap{max-width:1100px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:44px;letter-spacing:1px}
+    .sub{opacity:.9}
+    main{padding:24px 16px}
+    .card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    a.btn{display:block;text-decoration:none;color:#111;border:1px solid #e6e9f2;border-radius:14px;padding:16px}
+    a.btn:hover{border-color:#bcd2ff;background:#f3f7ff}
+    .t{font-weight:800;font-size:18px}
+    .d{color:#666;margin-top:6px}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:14px}
+    .pill{padding:6px 10px;border-radius:999px;background:#f1f3f7;color:#333;font-size:12px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#aaa;display:inline-block}
+    .dot.ok{background:#2fb344}.dot.ng{background:#fa5252}.dot.wait{background:#fab005}
+    pre{background:#0b1020;color:#dfe7ff;padding:12px;border-radius:12px;overflow:auto}
+    button{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:700;cursor:pointer}
+  </style>
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
-      <h1 class="hero-title">3行アプリ開発プロジェクト</h1>
-      <p class="hero-subtitle">授業内容を「3行」で振り返る学習支援アプリ</p>
+  <header>
+    <div class="wrap">
+      <h1>3行アプリ開発プロジェクト</h1>
+      <div class="sub">授業内容を「3行」で振り返る学習支援アプリ</div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <h2 class="card-title">メニュー</h2>
-      <p class="muted">機能を選択してください。</p>
-
-      <div class="grid grid-2">
-        <a class="menu-btn" href="/posts.html">
-          <div class="menu-btn-title">3行投稿</div>
-          <div class="menu-btn-desc">授業の要点を3行でまとめて投稿</div>
-        </a>
-
-        <a class="menu-btn" href="/questions.html">
-          <div class="menu-btn-title">質問掲示板</div>
-          <div class="menu-btn-desc">疑問を投稿して、回答で学び合い</div>
-        </a>
-
-        <a class="menu-btn" href="/quizzes.html">
-          <div class="menu-btn-title">クイズ</div>
-          <div class="menu-btn-desc">思い出しクイズで理解を定着</div>
-        </a>
-
-        <a class="menu-btn" href="/reminders.html">
-          <div class="menu-btn-title">復習リマインダー</div>
-          <div class="menu-btn-desc">翌日/1週間後の復習を習慣化</div>
-        </a>
-
-        <a class="menu-btn" href="/ranking.html">
-          <div class="menu-btn-title">ランキング</div>
-          <div class="menu-btn-desc">投稿/回答の貢献度を可視化</div>
-        </a>
-
-        <a class="menu-btn" href="/settings.html">
-          <div class="menu-btn-title">設定</div>
-          <div class="menu-btn-desc">表示・ベースURL等の設定</div>
-        </a>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2 class="card-title">API ステータス</h2>
-      <div class="row row-between row-center">
-        <div class="row row-center gap-sm">
-          <span id="apiDot" class="dot dot-gray"></span>
-          <span id="apiText" class="muted">checking...</span>
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <h2 style="margin:0 0 12px;">メニュー</h2>
+        <div class="grid">
+          <a class="btn" href="/posts.html"><div class="t">3行投稿</div><div class="d">授業の要点を3行で投稿</div></a>
+          <a class="btn" href="/questions.html"><div class="t">質問掲示板</div><div class="d">疑問投稿→回答→学び合い</div></a>
+          <a class="btn" href="/quizzes.html"><div class="t">クイズ</div><div class="d">思い出しクイズ一覧</div></a>
+          <a class="btn" href="/reminders.html"><div class="t">復習リマインダー</div><div class="d">翌日/1週間後の復習</div></a>
+          <a class="btn" href="/ranking.html"><div class="t">ランキング</div><div class="d">投稿/回答数の貢献度</div></a>
+          <a class="btn" href="/settings.html"><div class="t">設定</div><div class="d">表示・動作設定</div></a>
         </div>
-        <button class="btn" id="btnHealth">更新</button>
+
+        <div class="row">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="dot" class="dot wait"></span>
+            <span id="status" style="color:#555">API checking...</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <span class="pill">Base: /api/*</span>
+            <button id="btn">更新</button>
+          </div>
+        </div>
+
+        <pre id="out">{}</pre>
       </div>
-      <pre class="code" id="healthOut"></pre>
-    </section>
+    </div>
   </main>
 
-  <script src="/assets/common.js"></script>
   <script>
-    async function runHealth(){
+    async function apiGet(path){
+      const res = await fetch(path, { headers:{ "Accept":"application/json" }});
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data = text;}
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      return data;
+    }
+    async function health(){
+      const dot=document.getElementById("dot");
+      const status=document.getElementById("status");
+      const out=document.getElementById("out");
+      dot.className="dot wait"; status.textContent="API checking...";
       try{
-        setDot("apiDot","gray");
-        setText("apiText","checking...");
         const data = await apiGet("/api/health");
-        setDot("apiDot","green");
-        setText("apiText","API: OK");
-        setText("healthOut", JSON.stringify(data, null, 2));
+        dot.className="dot ok"; status.textContent="API: OK";
+        out.textContent = JSON.stringify(data,null,2);
       }catch(e){
-        setDot("apiDot","red");
-        setText("apiText","API: NG");
-        setText("healthOut", String(e));
+        dot.className="dot ng"; status.textContent="API: NG";
+        out.textContent = String(e);
       }
     }
-    document.getElementById("btnHealth").addEventListener("click", runHealth);
-    runHealth();
+    document.getElementById("btn").addEventListener("click", health);
+    health();
   </script>
 </body>
 </html>

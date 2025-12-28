@@ -60,7 +60,11 @@
         <table>
           <thead><tr><th>名前</th><th>回数</th></tr></thead>
           <tbody>
-            ${rows.map(r=>`<tr><td>${escapeHtml(r.name ?? "")}</td><td>${escapeHtml(r.cnt ?? r.count ?? "")}</td></tr>`).join("")}
+            ${rows.map(r=>{
+  const c = r.cnt ?? r.count ?? r.post_count ?? r.answer_count ?? 0;
+  return `<tr><td>${escapeHtml(r.name ?? "")}</td><td>${escapeHtml(c)}</td></tr>`;
+}).join("")}
+
           </tbody>
         </table>`;
       return html;

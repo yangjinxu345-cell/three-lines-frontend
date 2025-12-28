@@ -13,11 +13,12 @@
     .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
     label{display:block;font-size:12px;color:#666;margin:10px 0 6px}
     input,textarea{width:100%;padding:10px 12px;border:1px solid #e6e9f2;border-radius:12px;font-size:14px}
-    textarea{min-height:120px}
+    textarea{min-height:180px}
     .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap}
     .btn{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
     .btn.gray{background:#495057}
-    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto}
+    .hint{font-size:12px;color:#666}
+    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto;white-space:pre-wrap}
   </style>
 </head>
 <body>
@@ -27,7 +28,7 @@
         <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
         <h1 style="margin:6px 0 0">設定</h1>
       </div>
-      <div style="opacity:.9">/api/settings</div>
+      <div style="opacity:.9" id="apiLabel">/api/settings?name=default</div>
     </div>
   </header>
 
@@ -42,6 +43,10 @@
           </div>
         </div>
 
+        <label>設定名（name）</label>
+        <input id="name" placeholder="default" value="default" />
+        <div class="hint">※ /api/settings は <b>?name=</b> が必須です。ここで設定セットを切り替えられます。</div>
+
         <label>JSON</label>
         <textarea id="json" placeholder='{"example":true}'></textarea>
 
@@ -51,38 +56,84 @@
   </main>
 
   <script>
+    const DEFAULT_NAME = "default";
+
+    function currentName(){
+      const v = (document.getElementById("name").value || "").trim();
+      return v || DEFAULT_NAME;
+    }
+
+    function settingsUrl(){
+      const name = currentName();
+      const url = `/api/settings?name=${encodeURIComponent(name)}`;
+      document.getElementById("apiLabel").textContent = url;
+      return url;
+    }
+
     async function api(path,opt={}){
       const res = await fetch(path,opt);
       const text = await res.text();
       let data; try{ data = JSON.parse(text);}catch{ data=text; }
+      // 统一错误处理：HTTP error 或 ok:false 都算错误
       if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      if(typeof data === "object" && data && data.ok === false) throw new Error(data.error || "API error");
       return data;
     }
+
     async function load(){
       const out=document.getElementById("out");
       out.textContent="loading...";
       try{
-        const data = await api("/api/settings");
-        document.getElementById("json").value = JSON.stringify(data,null,2);
-        out.textContent="ok";
-      }catch(e){ out.textContent=String(e); }
+        const url = settingsUrl();
+        const data = await api(url, { cache: "no-store" });
+
+        // 兼容不同返回结构：如果后端返回 {ok:true, value:{...}} 或 {ok:true, settings:{...}}
+        const value =
+          (data && typeof data === "object" && ("value" in data)) ? data.value :
+          (data && typeof data === "object" && ("settings" in data)) ? data.settings :
+          data;
+
+        document.getElementById("json").value = JSON.stringify(value ?? {}, null, 2);
+        out.textContent = `ok (name=${currentName()})\n` + JSON.stringify(data, null, 2);
+      }catch(e){
+        out.textContent=String(e?.stack || e);
+      }
     }
+
     async function save(){
       const out=document.getElementById("out");
       out.textContent="saving...";
       try{
         const txt = document.getElementById("json").value;
-        const payload = JSON.parse(txt);
-        const data = await api("/api/settings",{
+
+        let payload;
+        try{
+          payload = JSON.parse(txt);
+        }catch(parseErr){
+          throw new Error("JSON 形式が正しくありません: " + parseErr.message);
+        }
+
+        const url = settingsUrl();
+        const data = await api(url,{
           method:"POST",
           headers:{ "Content-Type":"application/json" },
           body: JSON.stringify(payload)
         });
-        out.textContent = JSON.stringify(data,null,2);
-      }catch(e){ out.textContent=String(e); }
+
+        out.textContent = `saved (name=${currentName()})\n` + JSON.stringify(data,null,2);
+      }catch(e){
+        out.textContent=String(e?.stack || e);
+      }
     }
+
     document.getElementById("btnLoad").addEventListener("click", load);
     document.getElementById("btnSave").addEventListener("click", save);
+
+    // name 改了就自动刷新 URL 显示（不自动 load，避免误请求；你也可以改成自动 load）
+    document.getElementById("name").addEventListener("input", () => settingsUrl());
+
+    // 初次加载
+    settingsUrl();
     load();
   </script>
 </body>

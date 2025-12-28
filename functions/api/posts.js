@@ -13,7 +13,11 @@ export async function onRequest(context) {
       const offset = clampInt(url.searchParams.get("offset"), 0, 1000000, 0);
 
       const rows = await env.DB.prepare(`
-        SELECT id, name, class_name, lesson_date, topic, line1, line2, line3, created_at
+        SELECT
+          id, name, class_name, lesson_date, topic, line1, line2, line3, created_at,
+          COALESCE(like_count, 0) AS like_count,
+          COALESCE(comment_count, 0) AS comment_count,
+          last_commented_at
         FROM posts
         ORDER BY id DESC
         LIMIT ? OFFSET ?
@@ -42,11 +46,19 @@ export async function onRequest(context) {
         );
       }
 
-      // 1) insert post
+      // 1) insert post（like/comment初期化してNULL回避）
       const ins = await env.DB.prepare(`
-        INSERT INTO posts (name, class_name, lesson_date, topic, line1, line2, line3)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(name, class_name || null, lesson_date, topic || null, line1, line2, line3).run();
+        INSERT INTO posts
+          (name, class_name, lesson_date, topic, line1, line2, line3, like_count, comment_count, last_commented_at)
+        VALUES
+          (?, ?, ?, ?, ?, ?, ?, 0, 0, NULL)
+      `).bind(
+        name,
+        class_name || null,
+        lesson_date,
+        topic || null,
+        line1, line2, line3
+      ).run();
 
       const postId = ins.meta?.last_row_id;
 
@@ -88,8 +100,8 @@ export async function onRequest(context) {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS,PUT,DELETE",
+    "Access-Control-Allow-Headers": "Content-Type, X-Teacher-Key",
   };
 }
 function corsPreflight() {
@@ -116,7 +128,6 @@ function str(v, minLen, maxLen) {
 }
 function normalizeDate(v) {
   const s = str(v, 8, 20);
-  // accept YYYY-MM-DD or YYYY/MM/DD
   const m = s.match(/^(\d{4})[\/-](\d{2})[\/-](\d{2})$/);
   if (!m) return "";
   return `${m[1]}-${m[2]}-${m[3]}`;

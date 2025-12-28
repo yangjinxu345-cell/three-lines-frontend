@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>復習リマインダー | 3行アプリ</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header class="sub-hero">
+    <div class="sub-hero-inner">
+      <a class="backlink" href="/index.html">← メニュー</a>
+      <h1 class="sub-hero-title">復習リマインダー</h1>
+      <p class="sub-hero-subtitle">翌日 / 1週間後の復習を見える化</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="row row-between row-center">
+        <h2 class="card-title">リマインダー</h2>
+        <button class="btn" id="btnRemindersRefresh">更新</button>
+      </div>
+
+      <div class="row row-between row-center mt-sm">
+        <div class="row row-center gap-sm">
+          <span id="apiDot" class="dot dot-gray"></span>
+          <span id="apiText" class="muted">checking...</span>
+        </div>
+        <span class="muted" id="remindersMeta">—</span>
+      </div>
+
+      <div id="remindersRoot" class="stack mt-md"></div>
+    </section>
+  </main>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/reminders.js"></script>
+  <script>
+    if (typeof initRemindersPage === "function") {
+      initRemindersPage({
+        apiDotId: "apiDot",
+        apiTextId: "apiText",
+        metaId: "remindersMeta",
+        rootId: "remindersRoot",
+        refreshBtnId: "btnRemindersRefresh",
+      });
+    }
+  </script>
+</body>
+</html>

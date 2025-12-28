@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>質問掲示板 | 3行アプリ</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header class="sub-hero">
+    <div class="sub-hero-inner">
+      <a class="backlink" href="/index.html">← メニュー</a>
+      <h1 class="sub-hero-title">質問掲示板</h1>
+      <p class="sub-hero-subtitle">疑問を投稿し、回答で学び合う</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="grid grid-2">
+      <div class="card">
+        <h2 class="card-title">質問を投稿</h2>
+        <div id="questionsFormRoot"></div>
+      </div>
+
+      <div class="card">
+        <div class="row row-between row-center">
+          <h2 class="card-title">質問一覧</h2>
+          <button class="btn" id="btnQuestionsRefresh">更新</button>
+        </div>
+
+        <div class="row row-between row-center mt-sm">
+          <div class="row row-center gap-sm">
+            <span id="apiDot" class="dot dot-gray"></span>
+            <span id="apiText" class="muted">checking...</span>
+          </div>
+          <span class="muted" id="questionsCount">0件</span>
+        </div>
+
+        <div id="questionsListRoot" class="stack mt-md"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/questions.js"></script>
+  <script>
+    if (typeof initQuestionsPage === "function") {
+      initQuestionsPage({
+        apiDotId: "apiDot",
+        apiTextId: "apiText",
+        countId: "questionsCount",
+        formRootId: "questionsFormRoot",
+        listRootId: "questionsListRoot",
+        refreshBtnId: "btnQuestionsRefresh",
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ユーザー管理</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb}
+    header{background:#0b5ed7;color:#fff;padding:22px 16px}
+    .wrap{max-width:1100px;margin:0 auto}
+    main{padding:18px 16px}
+    .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    a{color:#fff;text-decoration:none;font-weight:700}
+    label{display:block;font-size:12px;color:#666;margin:10px 0 6px}
+    input,select{width:100%;padding:10px 12px;border:1px solid #e6e9f2;border-radius:12px;font-size:14px;box-sizing:border-box}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .btn{border:0;border-radius:12px;padding:9px 12px;background:#0b5ed7;color:#fff;font-weight:800;cursor:pointer}
+    .btn.gray{background:#495057}
+    .btn.red{background:#b91c1c}
+    .muted{color:#666;font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eef1f7;padding:10px;text-align:left;vertical-align:top}
+    th{color:#555;font-size:12px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef1f7;font-size:12px}
+    pre{background:#0b1020;color:#dfe7ff;padding:10px;border-radius:12px;overflow:auto;white-space:pre-wrap}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+    @media(max-width:980px){ .grid{grid-template-columns:1fr 1fr} }
+    @media(max-width:640px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div>
+      <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+      <h1 style="margin:6px 0 0">ユーザー管理（Admin）</h1>
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <a href="/account.html" style="opacity:.95">アカウント</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="card">
+      <div class="muted" id="me">checking...</div>
+
+      <hr style="border:none;border-top:1px solid #eef1f7;margin:14px 0">
+
+      <h2 style="margin:0">新規ユーザー作成</h2>
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label>username（学籍番号など）</label>
+          <input id="new_username" placeholder="e.g. ite2_yang" />
+        </div>
+        <div>
+          <label>display_name（表示名）</label>
+          <input id="new_display" placeholder="楊旻" />
+        </div>
+        <div>
+          <label>role</label>
+          <select id="new_role">
+            <option value="student">student</option>
+            <option value="teacher">teacher</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+        <div>
+          <label>初期パスワード</label>
+          <input id="new_password" type="password" placeholder="8文字以上、英字+数字" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="btnCreate">作成</button>
+        <div class="row" style="gap:8px">
+          <input id="q" placeholder="検索（username / display_name）" style="width:260px" />
+          <select id="roleFilter" style="width:160px">
+            <option value="">role: ALL</option>
+            <option value="student">student</option>
+            <option value="teacher">teacher</option>
+            <option value="admin">admin</option>
+          </select>
+          <button class="btn gray" id="btnReload">更新</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>username</th><th>display_name</th><th>role</th><th>active</th><th>created</th><th>actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <pre id="out">{}</pre>
+    </div>
+  </div>
+</main>
+
+<script>
+  async function api(path,opt={}){
+    const res = await fetch(path,opt);
+    const text = await res.text();
+    let data; try{ data=JSON.parse(text);}catch{ data=text; }
+    if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+    if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
+    return data;
+  }
+
+  let ME = null;
+
+  async function guardAdmin(){
+    const data = await api("/api/auth/me");
+    if(!data.user){ location.href="/login.html"; return; }
+    ME = data.user;
+    document.getElementById("me").textContent = `Logged in: ${ME.display_name} (${ME.username}) role=${ME.role}`;
+    if(ME.role !== "admin"){
+      document.getElementById("me").textContent += "  → Admin only. (403)";
+      throw new Error("Admin only");
+    }
+  }
+
+  function rowHtml(u){
+    const roleSel = `
+      <select data-k="role" data-id="${u.id}">
+        ${["student","teacher","admin"].map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${r}</option>`).join("")}
+      </select>`;
+    const activeSel = `
+      <select data-k="is_active" data-id="${u.id}">
+        <option value="1" ${Number(u.is_active)===1?"selected":""}>1</option>
+        <option value="0" ${Number(u.is_active)===0?"selected":""}>0</option>
+      </select>`;
+    const disp = `<input data-k="display_name" data-id="${u.id}" value="${escapeHtml(u.display_name||"")}" />`;
+
+    return `
+      <tr>
+        <td><span class="pill">${u.id}</span></td>
+        <td>${escapeHtml(u.username||"")}</td>
+        <td>${disp}</td>
+        <td>${roleSel}</td>
+        <td>${activeSel}</td>
+        <td class="muted">${escapeHtml(u.created_at||"")}</td>
+        <td>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn" data-act="save" data-id="${u.id}">保存</button>
+            <button class="btn gray" data-act="pw" data-id="${u.id}">PW重置</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  async function loadUsers(){
+    const out = document.getElementById("out");
+    out.textContent = "loading...";
+    const q = document.getElementById("q").value.trim();
+    const role = document.getElementById("roleFilter").value;
+    const qs = new URLSearchParams();
+    if(q) qs.set("q", q);
+    if(role) qs.set("role", role);
+
+    const data = await api("/api/admin/users?" + qs.toString());
+    const tbody = document.getElementById("tbody");
+    tbody.innerHTML = (data.items||[]).map(rowHtml).join("");
+    out.textContent = `ok: ${data.items.length} users`;
+  }
+
+  async function createUser(){
+    const out = document.getElementById("out");
+    out.textContent = "creating...";
+    try{
+      const username = document.getElementById("new_username").value.trim();
+      const display_name = document.getElementById("new_display").value.trim();
+      const role = document.getElementById("new_role").value;
+      const password = document.getElementById("new_password").value;
+
+      const data = await api("/api/admin/users",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ username, display_name, role, password })
+      });
+
+      out.textContent = "created: " + JSON.stringify(data, null, 2);
+      document.getElementById("new_username").value="";
+      document.getElementById("new_display").value="";
+      document.getElementById("new_password").value="";
+      await loadUsers();
+    }catch(e){
+      out.textContent = String(e?.message||e);
+    }
+  }
+
+  function getEditValue(userId, key){
+    const el = document.querySelector(`[data-k="${key}"][data-id="${userId}"]`);
+    return el ? el.value : "";
+  }
+
+  async function saveUser(userId){
+    const out = document.getElementById("out");
+    out.textContent = "saving...";
+    try{
+      const display_name = getEditValue(userId, "display_name").trim();
+      const role = getEditValue(userId, "role");
+      const is_active = getEditValue(userId, "is_active") === "1";
+
+      const data = await api(`/api/admin/users/${userId}`,{
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ display_name, role, is_active })
+      });
+      out.textContent = "saved: " + JSON.stringify(data, null, 2);
+      await loadUsers();
+    }catch(e){
+      out.textContent = String(e?.message||e);
+    }
+  }
+
+  async function resetPassword(userId){
+    const out = document.getElementById("out");
+    const pw = prompt("新しいパスワード（8文字以上、英字+数字）:");
+    if(!pw) return;
+    out.textContent = "resetting password...";
+    try{
+      const data = await api(`/api/admin/users/${userId}/password`,{
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ new_password: pw })
+      });
+      out.textContent = "password reset: " + JSON.stringify(data, null, 2);
+    }catch(e){
+      out.textContent = String(e?.message||e);
+    }
+  }
+
+  document.getElementById("btnCreate").addEventListener("click", createUser);
+  document.getElementById("btnReload").addEventListener("click", loadUsers);
+
+  document.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-act]");
+    if(!btn) return;
+    const act = btn.getAttribute("data-act");
+    const id = btn.getAttribute("data-id");
+    if(act==="save") saveUser(id);
+    if(act==="pw") resetPassword(id);
+  });
+
+  (async ()=>{
+    try{
+      await guardAdmin();
+      await loadUsers();
+    }catch(e){
+      document.getElementById("out").textContent = String(e?.message||e);
+    }
+  })();
+</script>
+
+</body>
+</html>

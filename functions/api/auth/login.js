@@ -76,7 +76,7 @@ export async function onRequest(context) {
     // Try insert into sessions table (common schema)
     // If your sessions table columns differ, tell me your CREATE TABLE, I'll align it.
     await env.DB.prepare(`
-      INSERT INTO sessions (user_id, token_hash, created_at, expires_at)
+      INSERT INTO sessions (user_id, token, created_at, expires_at)
       VALUES (?, ?, ?, ?)
     `).bind(user.id, tokenHash, nowIso, expIso).run();
 

@@ -24,8 +24,7 @@ export async function onRequest(context) {
     }
 
     if (request.method === "POST") {
-      const teacherKey = request.headers.get("X-Teacher-Key") || "";
-      if (!teacherKey.trim()) return json({ ok: false, error: "Missing X-Teacher-Key" }, 401, headers);
+      await requireTeacherKey(env.DB, request);
 
       const body = await safeJson(request);
       if (!body) return json({ ok: false, error: "Invalid JSON body" }, 400, headers);
@@ -43,7 +42,6 @@ export async function onRequest(context) {
 
       const commentId = ins.meta?.last_row_id;
 
-      // comment_count & last_commented_at 同步
       const { count, lastAt } = await recomputeCommentAgg(env.DB, postId);
 
       return json({
@@ -56,15 +54,31 @@ export async function onRequest(context) {
 
     return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
+    const msg = String(e?.message || e);
+    if (msg.startsWith("AUTH:")) {
+      return json({ ok: false, error: msg.replace(/^AUTH:\s*/, "") }, 401, headers);
+    }
+    return json({ ok: false, error: msg }, 500, headers);
+  }
+}
+
+async function requireTeacherKey(db, request) {
+  const provided = (request.headers.get("X-Teacher-Key") || "").trim();
+  if (!provided) throw new Error("AUTH: Missing X-Teacher-Key");
+
+  const row = await db.prepare(`
+    SELECT teacher_key FROM user_settings WHERE name = 'default'
+  `).first();
+
+  const expected = String(row?.teacher_key || "").trim();
+  if (expected && provided !== expected) {
+    throw new Error("AUTH: Invalid teacher key");
   }
 }
 
 async function recomputeCommentAgg(db, postId) {
   const r = await db.prepare(`
-    SELECT
-      COUNT(*) AS c,
-      MAX(created_at) AS lastAt
+    SELECT COUNT(*) AS c, MAX(created_at) AS lastAt
     FROM post_comments
     WHERE post_id = ? AND is_deleted = 0
   `).bind(postId).first();

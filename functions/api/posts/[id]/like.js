@@ -12,9 +12,8 @@ export async function onRequest(context) {
       return json({ ok: false, error: "Invalid post id" }, 400, headers);
     }
 
-    // 要求教員キー存在（先不校验值，后面你把 settings.js 给我我再做“真实校验”）
-    const teacherKey = request.headers.get("X-Teacher-Key") || "";
-    if (!teacherKey.trim()) return json({ ok: false, error: "Missing X-Teacher-Key" }, 401, headers);
+    // ✅ 真校验
+    await requireTeacherKey(env.DB, request, headers);
 
     if (request.method === "POST") {
       const body = await safeJson(request);
@@ -30,7 +29,6 @@ export async function onRequest(context) {
           VALUES (?, ?)
         `).bind(postId, teacherName).run();
       } catch (e) {
-        // UNIQUE(post_id, teacher_name) 冲突：已经点过赞了
         const msg = String(e?.message || e);
         if (msg.includes("UNIQUE") || msg.includes("unique")) {
           liked = false;
@@ -59,7 +57,28 @@ export async function onRequest(context) {
 
     return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
+    // requireTeacherKey 直接 throw 的错误也这里接
+    const msg = String(e?.message || e);
+    if (msg.startsWith("AUTH:")) {
+      return json({ ok: false, error: msg.replace(/^AUTH:\s*/, "") }, 401, headers);
+    }
+    return json({ ok: false, error: msg }, 500, headers);
+  }
+}
+
+async function requireTeacherKey(db, request) {
+  const provided = (request.headers.get("X-Teacher-Key") || "").trim();
+  if (!provided) throw new Error("AUTH: Missing X-Teacher-Key");
+
+  const row = await db.prepare(`
+    SELECT teacher_key FROM user_settings WHERE name = 'default'
+  `).first();
+
+  const expected = String(row?.teacher_key || "").trim();
+
+  // 允许 expected 为空（便于你先跑通），但要“做得好”就去 settings 里填上
+  if (expected && provided !== expected) {
+    throw new Error("AUTH: Invalid teacher key");
   }
 }
 

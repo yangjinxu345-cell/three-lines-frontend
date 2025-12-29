@@ -15,7 +15,6 @@ export async function onRequest(context) {
     const password = str(body.password, 1, 200);
     if (!username || !password) return json({ ok: false, error: "Missing username/password" }, 400, headers);
 
-    // 1) find user
     const user = await env.DB.prepare(`
       SELECT id, username, display_name, role, password_hash, password_salt
       FROM users
@@ -24,31 +23,53 @@ export async function onRequest(context) {
 
     if (!user) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
 
-    // 2) verify password
-    const ok = await verifyPassword(password, user.password_salt, user.password_hash);
-    if (!ok) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
+    // ---- 1) verify (兼容旧数据) ----
+    let verified = false;
 
-    // 3) create session token + store to D1 (sessions.token)
+    const hash = String(user.password_hash ?? "").trim();
+    const salt = String(user.password_salt ?? "").trim();
+
+    const looksLegacy =
+      !hash || !salt || hash === "admin" || salt === "admin" || hash.length < 32 || salt.length < 8;
+
+    if (looksLegacy) {
+      // 旧数据：先用“明文==password_hash”或“明文==username”等方式兜底一次
+      // 你的截图里 hash/salt 都是 "admin"：所以 admin/admin 会通过
+      if (password === hash || password === salt) verified = true;
+    } else {
+      verified = await verifyPasswordPBKDF2(password, salt, hash);
+    }
+
+    if (!verified) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
+
+    // ---- 2) 若是旧数据，登录成功后立刻升级为 PBKDF2 ----
+    if (looksLegacy) {
+      const newSalt = makeSalt(16);
+      const newHash = await hashPasswordPBKDF2(password, newSalt);
+      await env.DB.prepare(`
+        UPDATE users
+        SET password_salt = ?, password_hash = ?
+        WHERE id = ?
+      `).bind(newSalt, newHash, user.id).run();
+    }
+
+    // ---- 3) create session (与你的 sessions 表一致：token/user_id/expires_at) ----
     const sessionToken = bytesToB64Url(crypto.getRandomValues(new Uint8Array(32)));
-    const now = Date.now();
     const ttlSec = 60 * 60 * 24 * 7; // 7 days
-    const expIso = new Date(now + ttlSec * 1000).toISOString();
+    const expIso = new Date(Date.now() + ttlSec * 1000).toISOString();
 
     await env.DB.prepare(`
       INSERT INTO sessions (token, user_id, expires_at)
       VALUES (?, ?, ?)
     `).bind(sessionToken, user.id, expIso).run();
 
-    // 4) set cookie (关键：Path=/)
+    // ---- 4) Set-Cookie（关键：Path=/）----
     const cookie =
       `session=${encodeURIComponent(sessionToken)}; ` +
       `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${ttlSec}`;
 
     return json(
-      {
-        ok: true,
-        user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role },
-      },
+      { ok: true, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role } },
       200,
       { ...headers, "Set-Cookie": cookie }
     );
@@ -84,36 +105,32 @@ function str(v, minLen, maxLen) {
   if (s.length < minLen) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
-
-// base64url
 function bytesToB64Url(bytes) {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
+function makeSalt(len = 16) {
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  // 用 hex 方便存储
+  return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-// PBKDF2 verify：把 iteration 控制在 100000 以下（你之前遇到过 >100000 的报错）
-async function verifyPassword(password, salt, storedHash) {
-  // 如果你 users 表里现在 password_hash/password_salt 还是 "admin" 这种占位符，
-  // 这里会失败；你需要用管理页面把 admin 密码真正设置成 hash 形式。
-  // 但你现在能“登录成功”，说明你当前代码可能是明文对比的。
-  // 所以：这里给你一个兼容逻辑：如果 storedHash === password_salt === "admin" 这种，就当明文。
-  if (storedHash === password && salt === password) return true;
+const PBKDF2_ITER = 100000; // ✅ Cloudflare 上限内
 
-  const iterations = 100000; // ✅ 不要超过 100000
+async function hashPasswordPBKDF2(password, saltHex) {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits"]
-  );
+  const salt = enc.encode(saltHex);
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt: enc.encode(salt), iterations, hash: "SHA-256" },
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITER, hash: "SHA-256" },
     key,
     256
   );
-  const hashHex = [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("");
-  return hashHex === String(storedHash);
+  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyPasswordPBKDF2(password, saltHex, storedHashHex) {
+  const h = await hashPasswordPBKDF2(password, saltHex);
+  return h === String(storedHashHex);
 }

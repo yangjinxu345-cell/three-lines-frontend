@@ -12,10 +12,8 @@ export async function onRequest(context) {
       return json({ ok: false, error: "Invalid comment id" }, 400, headers);
     }
 
-    const teacherKey = request.headers.get("X-Teacher-Key") || "";
-    if (!teacherKey.trim()) return json({ ok: false, error: "Missing X-Teacher-Key" }, 401, headers);
+    await requireTeacherKey(env.DB, request);
 
-    // comment 本人チェック用に先に取る
     const existing = await env.DB.prepare(`
       SELECT id, post_id, teacher_name, body, created_at, updated_at, is_deleted
       FROM post_comments
@@ -33,7 +31,6 @@ export async function onRequest(context) {
       if (!teacherName || !newBody) {
         return json({ ok: false, error: "Missing fields: teacher_name, body" }, 400, headers);
       }
-
       if (teacherName !== existing.teacher_name) {
         return json({ ok: false, error: "Forbidden: not your comment" }, 403, headers);
       }
@@ -44,14 +41,13 @@ export async function onRequest(context) {
         WHERE id = ? AND is_deleted = 0
       `).bind(newBody, commentId).run();
 
-      return json({ ok: true, updated_at: new Date().toISOString() }, 200, headers);
+      return json({ ok: true }, 200, headers);
     }
 
     if (request.method === "DELETE") {
       const url = new URL(request.url);
       const teacherName = str(url.searchParams.get("teacher_name"), 1, 50);
       if (!teacherName) return json({ ok: false, error: "Missing teacher_name" }, 400, headers);
-
       if (teacherName !== existing.teacher_name) {
         return json({ ok: false, error: "Forbidden: not your comment" }, 403, headers);
       }
@@ -62,8 +58,8 @@ export async function onRequest(context) {
         WHERE id = ?
       `).bind(commentId).run();
 
-      // 同期：comment_count / last_commented_at
       const postId = existing.post_id;
+
       const agg = await env.DB.prepare(`
         SELECT COUNT(*) AS c, MAX(created_at) AS lastAt
         FROM post_comments
@@ -82,7 +78,25 @@ export async function onRequest(context) {
 
     return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
+    const msg = String(e?.message || e);
+    if (msg.startsWith("AUTH:")) {
+      return json({ ok: false, error: msg.replace(/^AUTH:\s*/, "") }, 401, headers);
+    }
+    return json({ ok: false, error: msg }, 500, headers);
+  }
+}
+
+async function requireTeacherKey(db, request) {
+  const provided = (request.headers.get("X-Teacher-Key") || "").trim();
+  if (!provided) throw new Error("AUTH: Missing X-Teacher-Key");
+
+  const row = await db.prepare(`
+    SELECT teacher_key FROM user_settings WHERE name = 'default'
+  `).first();
+
+  const expected = String(row?.teacher_key || "").trim();
+  if (expected && provided !== expected) {
+    throw new Error("AUTH: Invalid teacher key");
   }
 }
 

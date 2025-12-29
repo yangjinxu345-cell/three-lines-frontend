@@ -32,4 +32,187 @@
   <header>
     <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
       <div>
-        <div style="opacity:.95"><a href="/index.html">← メニュー</a></
+        <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+        <h1 style="margin:6px 0 0">設定</h1>
+      </div>
+      <div style="opacity:.9" id="apiPath">/api/settings?name=default</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <div class="row">
+          <h2 style="margin:0">設定データ</h2>
+          <div style="display:flex;gap:10px">
+            <button class="btn gray" id="btnLoad">読み込み</button>
+            <button class="btn" id="btnSave">保存（POST）</button>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:10px">
+          <div>
+            <label>設定名（name）</label>
+            <input id="name" value="default" class="mono" />
+            <div class="hint">※ この name ごとに設定セットを切り替えます。通常は default のままでOK。</div>
+          </div>
+
+          <div>
+            <label>ランキング非表示（hide_ranking）</label>
+            <input id="hide_ranking" value="0" class="mono" />
+            <div class="hint">0=表示 / 1=非表示</div>
+          </div>
+
+          <div>
+            <label>教員キー（teacher_key）</label>
+            <input id="teacher_key" placeholder="例：Mitsuya-2025-Secret-xxxxx" class="mono" />
+            <div class="hint">※ これを posts.html の「teacher_key」に入力した人だけが いいね/コメントできます。</div>
+          </div>
+
+          <div>
+            <label>教員名リスト（teacher_names）</label>
+            <input id="teacher_names" placeholder='例：["三谷","吉田"]' class="mono" />
+            <div class="hint">※ 任意（今は未使用）。将来「先生名の制限」に使えます。</div>
+          </div>
+        </div>
+
+        <label style="margin-top:14px">JSON（保存される “item” 本体）</label>
+        <textarea id="json" class="mono" placeholder='{"name":"default","hide_ranking":0,"teacher_key":"","teacher_names":"[]"}'></textarea>
+
+        <div class="hint">
+          読み込み時：APIの <code>item</code> だけをここに表示します。<br/>
+          保存時：ここに書いたJSONをそのままPOSTします（必ず name を含めます）。
+        </div>
+
+        <pre id="out">{}</pre>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function api(path,opt={}){
+      const res = await fetch(path,opt);
+      const text = await res.text();
+      let data; try{ data = JSON.parse(text);}catch{ data=text; }
+      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      if (data && typeof data === "object" && data.ok === false) throw new Error(data.error || "API error");
+      return data;
+    }
+
+    function currentName(){
+      return (document.getElementById("name").value || "").trim();
+    }
+    function updateApiPath(){
+      const n = currentName() || "default";
+      document.getElementById("apiPath").textContent = `/api/settings?name=${n}`;
+    }
+
+    function setOut(msg, kind=""){
+      const out = document.getElementById("out");
+      out.className = kind;
+      out.textContent = msg;
+    }
+
+    function syncFormFromItem(item){
+      document.getElementById("name").value = item.name ?? "default";
+      document.getElementById("hide_ranking").value = String(item.hide_ranking ?? 0);
+      document.getElementById("teacher_key").value = item.teacher_key ?? "";
+      document.getElementById("teacher_names").value = item.teacher_names ?? "[]";
+      document.getElementById("json").value = JSON.stringify(item, null, 2);
+      updateApiPath();
+    }
+
+    function syncItemFromForm(){
+      // 以输入框为准，合成 item
+      const name = currentName();
+      const hide = parseInt(document.getElementById("hide_ranking").value || "0", 10);
+      const teacher_key = document.getElementById("teacher_key").value || "";
+      const teacher_names = document.getElementById("teacher_names").value || "[]";
+
+      return {
+        name: name || "default",
+        hide_ranking: Number.isFinite(hide) ? hide : 0,
+        teacher_key,
+        teacher_names
+      };
+    }
+
+    async function load(){
+      const n = currentName();
+      if(!n){
+        setOut("Error: name が空です", "err");
+        return;
+      }
+
+      setOut("loading...");
+      updateApiPath();
+
+      try{
+        const data = await api(`/api/settings?name=${encodeURIComponent(n)}`);
+        // ✅ 关键：只取 item
+        const item = data.item || { name: n, hide_ranking: 0, teacher_key: "", teacher_names: "[]" };
+        syncFormFromItem(item);
+        setOut(`ok (name=${item.name})\n` + JSON.stringify(data, null, 2), "ok");
+      }catch(e){
+        setOut(String(e?.message || e), "err");
+      }
+    }
+
+    async function save(){
+      const btn = document.getElementById("btnSave");
+      btn.disabled = true;
+
+      setOut("saving...");
+      updateApiPath();
+
+      try{
+        // ✅ 从 JSON textarea 读取 item，本体必须包含 name
+        let item;
+        try {
+          item = JSON.parse(document.getElementById("json").value || "{}");
+        } catch {
+          throw new Error("JSON欄が不正です（JSON.parseできません）");
+        }
+
+        // 允许你只写部分字段，但必须补上 name
+        const n = currentName() || item.name || "default";
+        item.name = n;
+
+        // 如果你在上面输入框改了 teacher_key/hide_ranking，这里也同步覆盖（避免用户忘了）
+        const formItem = syncItemFromForm();
+        item.hide_ranking = formItem.hide_ranking;
+        item.teacher_key = formItem.teacher_key;
+        item.teacher_names = formItem.teacher_names;
+
+        // ✅ POST 的 body 顶层就是 item（不是 {ok,item}）
+        const data = await api("/api/settings",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(item)
+        });
+
+        // 保存后再读一次，确保页面一致
+        await load();
+
+        setOut("saved ✅\n" + JSON.stringify(data, null, 2), "ok");
+      }catch(e){
+        setOut(String(e?.message || e), "err");
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById("btnLoad").addEventListener("click", load);
+    document.getElementById("btnSave").addEventListener("click", save);
+    document.getElementById("name").addEventListener("input", updateApiPath);
+
+    // 初次加载
+    updateApiPath();
+    load();
+  </script>
+</body>
+</html>

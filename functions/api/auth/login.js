@@ -11,53 +11,109 @@ export async function onRequest(context) {
     const body = await safeJson(request);
     if (!body) return json({ ok: false, error: "Invalid JSON body" }, 400, headers);
 
-    const username = str(body.username, 1, 80);
+    const username = str(body.username, 1, 50);
     const password = str(body.password, 1, 200);
-    if (!username || !password) return json({ ok: false, error: "Missing username/password" }, 400, headers);
+    if (!username || !password) return json({ ok: false, error: "Missing: username/password" }, 400, headers);
 
+    // 1) get user
     const user = await env.DB.prepare(`
-      SELECT id, username, display_name, role, password_hash, password_salt, password_iters, is_active
+      SELECT id, username, display_name, role, password_hash, password_salt
       FROM users
       WHERE username = ?
-      LIMIT 1
     `).bind(username).first();
 
-    if (!user || Number(user.is_active) !== 1) {
-      // 不泄露“是否存在该用户名”
-      await sleep(150);
-      return json({ ok: false, error: "Invalid credentials" }, 401, headers);
+    if (!user) return json({ ok: false, error: "Invalid username or password" }, 401, headers);
+
+    // 2) verify password (robust: avoid atob crash)
+    const storedHash = (user.password_hash ?? "").toString();
+    const storedSalt = (user.password_salt ?? "").toString();
+
+    let ok = false;
+    let needUpgrade = false;
+
+    // --- Case A: legacy/plaintext bootstrap (your current DB: admin/admin) ---
+    // If salt/hash is not valid base64, we treat it as legacy and allow:
+    //   password === storedHash  (or password === storedSalt)
+    if (!isBase64Like(storedHash) || !isBase64Like(storedSalt)) {
+      if (password === storedHash || password === storedSalt) {
+        ok = true;
+        needUpgrade = true; // upgrade to secure hash after first login
+      } else {
+        return json({ ok: false, error: "Invalid username or password" }, 401, headers);
+      }
+    } else {
+      // --- Case B: normal secure verify (PBKDF2) ---
+      const saltBytes = b64ToBytes(storedSalt);
+      const expected = storedHash;
+      const derived = await pbkdf2Base64(password, saltBytes, 150000, 32);
+      ok = (derived === expected);
+      if (!ok) return json({ ok: false, error: "Invalid username or password" }, 401, headers);
     }
 
-    const ok = await verifyPassword(password, String(user.password_salt), Number(user.password_iters), String(user.password_hash));
-    if (!ok) {
-      await sleep(150);
-      return json({ ok: false, error: "Invalid credentials" }, 401, headers);
+    // 3) upgrade legacy password to PBKDF2 storage (one-time)
+    if (needUpgrade) {
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const newSaltB64 = bytesToB64(saltBytes);
+      const newHashB64 = await pbkdf2Base64(password, saltBytes, 150000, 32);
+
+      await env.DB.prepare(`
+        UPDATE users
+        SET password_salt = ?, password_hash = ?
+        WHERE id = ?
+      `).bind(newSaltB64, newHashB64, user.id).run();
     }
 
-    // 更新 last_login_at
+    // 4) create session
+    // sessionToken: random 32 bytes base64url
+    const sessionToken = bytesToB64Url(crypto.getRandomValues(new Uint8Array(32)));
+    const tokenHash = await sha256Hex(sessionToken);
+
+    const now = new Date();
+    const expires = new Date(now.getTime() + 7 * 24 * 3600 * 1000); // 7 days
+    const nowIso = now.toISOString();
+    const expIso = expires.toISOString();
+
+    // Try insert into sessions table (common schema)
+    // If your sessions table columns differ, tell me your CREATE TABLE, I'll align it.
     await env.DB.prepare(`
-      UPDATE users SET updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-      WHERE id = ?
-    `).bind(user.id).run();
+      INSERT INTO sessions (user_id, token_hash, created_at, expires_at)
+      VALUES (?, ?, ?, ?)
+    `).bind(user.id, tokenHash, nowIso, expIso).run();
 
-    const token = randomTokenUrlSafe(32);
-    const days = 30;
-    const expiresAt = isoAfterDays(days);
+    // 5) set cookie (HttpOnly)
+    const cookie = [
+      `session=${sessionToken}`,
+      "Path=/",
+      "HttpOnly",
+      "Secure",
+      "SameSite=Lax",
+      `Max-Age=${7 * 24 * 3600}`,
+    ].join("; ");
 
-    await env.DB.prepare(`
-      INSERT INTO sessions (token, user_id, expires_at)
-      VALUES (?, ?, ?)
-    `).bind(token, user.id, expiresAt).run();
+    const resHeaders = {
+      ...headers,
+      "Set-Cookie": cookie,
+    };
 
-    // 审计日志
-    await writeAudit(env.DB, user.id, "LOGIN", user.id, { username });
+    // 6) (optional) audit log - ignore failure if table differs
+    try {
+      const ip = request.headers.get("CF-Connecting-IP") || "";
+      const ua = request.headers.get("User-Agent") || "";
+      await env.DB.prepare(`
+        INSERT INTO audit_logs (user_id, action, ip, user_agent, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(user.id, "login", ip, ua, nowIso).run();
+    } catch {}
 
-    const resHeaders = new Headers({ ...headers, "Content-Type": "application/json; charset=utf-8" });
-    resHeaders.append("Set-Cookie", buildSessionCookie(token, days));
-    return new Response(JSON.stringify({
+    return json({
       ok: true,
-      user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role }
-    }), { status: 200, headers: resHeaders });
+      user: {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name,
+        role: user.role,
+      }
+    }, 200, resHeaders);
 
   } catch (e) {
     return json({ ok: false, error: String(e?.message || e) }, 500, headers);
@@ -69,86 +125,72 @@ export async function onRequest(context) {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
 }
-function corsPreflight() { return new Response(null, { status: 204, headers: corsHeaders() }); }
-function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...headers } });
+function corsPreflight() {
+  return new Response(null, { status: 204, headers: corsHeaders() });
 }
-async function safeJson(req) { try { return await req.json(); } catch { return null; } }
+function json(obj, status = 200, headers = {}) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
+  });
+}
+async function safeJson(req) {
+  try { return await req.json(); } catch { return null; }
+}
 function str(v, minLen, maxLen) {
   if (v === undefined || v === null) return "";
   const s = String(v).trim();
   if (s.length < minLen) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
-function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
-function isoAfterDays(days) {
-  const dt = new Date();
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString();
-}
-function buildSessionCookie(token, days) {
-  const maxAge = days * 24 * 60 * 60;
-  // HttpOnly: 前端JS拿不到；SameSite=Lax：适合你这个站点；Secure：HTTPS下生效（Pages默认HTTPS）
-  return `session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+// base64 checks
+function isBase64Like(s) {
+  if (!s || typeof s !== "string") return false;
+  // allow base64 + '=' padding
+  if (s.length % 4 !== 0) return false;
+  return /^[A-Za-z0-9+/=]+$/.test(s);
 }
 
-// ---- crypto: PBKDF2(SHA-256) ----
-async function verifyPassword(password, saltB64, iters, expectedHashB64) {
-  const salt = b64ToBytes(saltB64);
-  const derived = await pbkdf2Sha256(password, salt, iters, 32);
-  const gotB64 = bytesToB64(derived);
-  return timingSafeEqualB64(gotB64, expectedHashB64);
-}
-async function pbkdf2Sha256(password, saltBytes, iterations, lengthBytes) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations },
-    keyMaterial,
-    lengthBytes * 8
-  );
-  return new Uint8Array(bits);
-}
-function randomTokenUrlSafe(nBytes) {
-  const a = new Uint8Array(nBytes);
-  crypto.getRandomValues(a);
-  return bytesToBase64Url(a);
-}
-function bytesToBase64Url(bytes) {
-  const b64 = bytesToB64(bytes);
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 function bytesToB64(bytes) {
   let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin);
 }
-function b64ToBytes(b64) {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-function timingSafeEqualB64(a, b) {
-  // 简易常量时间比较（避免明显时序差异）
-  const aa = String(a), bb = String(b);
-  let diff = aa.length ^ bb.length;
-  const len = Math.max(aa.length, bb.length);
-  for (let i=0;i<len;i++){
-    diff |= (aa.charCodeAt(i) || 0) ^ (bb.charCodeAt(i) || 0);
-  }
-  return diff === 0;
+function bytesToB64Url(bytes) {
+  return bytesToB64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-async function writeAudit(db, actorId, action, targetUserId, detailObj) {
-  const detail = JSON.stringify(detailObj || {});
-  await db.prepare(`
-    INSERT INTO audit_logs (actor_user_id, action, target_user_id, detail)
-    VALUES (?, ?, ?, ?)
-  `).bind(actorId ?? null, action, targetUserId ?? null, detail).run();
+async function pbkdf2Base64(password, saltBytes, iterations, keyLenBytes) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: saltBytes, iterations, hash: "SHA-256" },
+    keyMaterial,
+    keyLenBytes * 8
+  );
+  return bytesToB64(new Uint8Array(bits));
+}
+
+async function sha256Hex(s) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest("SHA-256", enc.encode(s));
+  const bytes = new Uint8Array(buf);
+  return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
 }

@@ -45,7 +45,7 @@ export async function onRequest(context) {
       // --- Case B: normal secure verify (PBKDF2) ---
       const saltBytes = b64ToBytes(storedSalt);
       const expected = storedHash;
-      const derived = await pbkdf2Base64(password, saltBytes, 150000, 32);
+      const derived = await pbkdf2Base64(password, saltBytes, 100000, 32);
       ok = (derived === expected);
       if (!ok) return json({ ok: false, error: "Invalid username or password" }, 401, headers);
     }
@@ -54,7 +54,7 @@ export async function onRequest(context) {
     if (needUpgrade) {
       const saltBytes = crypto.getRandomValues(new Uint8Array(16));
       const newSaltB64 = bytesToB64(saltBytes);
-      const newHashB64 = await pbkdf2Base64(password, saltBytes, 150000, 32);
+      const newHashB64 = await pbkdf2Base64(password, saltBytes, 100000, 32);
 
       await env.DB.prepare(`
         UPDATE users

@@ -72,6 +72,8 @@
 /* ---------- helpers ---------- */
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 function fmtCount(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+function normName(s){ return String(s ?? "").replace(/\s+/g,"").trim(); }
+
 async function api(path,opt={}){
   const res=await fetch(path,opt);
   const text=await res.text();
@@ -82,26 +84,62 @@ async function api(path,opt={}){
 }
 
 let ME=null;
-function canTeacher(){ return ME && (ME.role==="teacher" || ME.role==="admin"); }
+
+/* 兼容 display_name / displayName */
+function pickDisplayName(u){
+  return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? "";
+}
+
+function pickRole(u){
+  return u?.role ?? "";
+}
+
+function canTeacher(){
+  return ME && (pickRole(ME)==="teacher" || pickRole(ME)==="admin");
+}
+
+/**
+ * 归属判断优先级：
+ * 1) p.user_id === ME.id
+ * 2) p.username === ME.username   (如果后端在 posts list 里带了 username)
+ * 3) 去空格后：p.name === ME.display_name （兜底，防止“楊旻 vs 楊 旻”）
+ */
 function canEditPost(p){
   if(!ME) return false;
-  if(ME.role==="admin") return true;
-  // 归属判断：用 posts.name 与当前登录人的 display_name 对比（你当前表结构下最稳的方案）
-  return String(p.name||"") === String(ME.display_name||"");
+  if(pickRole(ME)==="admin") return true;
+
+  if(p.user_id != null && ME.id != null){
+    return String(p.user_id) === String(ME.id);
+  }
+
+  if(p.username && ME.username){
+    return String(p.username) === String(ME.username);
+  }
+
+  return normName(p.name) === normName(pickDisplayName(ME));
 }
 
 /* ---------- auth me ---------- */
-// 这里默认你的后端有 /api/auth/me
 async function loadMe(){
   try{
     const r = await api("/api/auth/me");
-    // 兼容 {ok:true,user:{...}} 或 {ok:true,item:{...}}
-    const u = r.user || r.item || r.me || r;
+    // 常见结构：{ok:true,user:{...}}；也可能 {ok:true,user:null}
+    const u = r?.user ?? r?.item ?? r?.me ?? null;
+    if(!u){
+      ME = null;
+      document.getElementById("me").textContent = "未ログイン（ログインしてください）";
+      return;
+    }
     ME = u;
-    document.getElementById("me").textContent = `ログイン：${u.display_name}（${u.role}）`;
+
+    const dn = pickDisplayName(u);
+    const role = pickRole(u);
+    const un = u.username ?? "";
+    document.getElementById("me").textContent =
+      `ログイン：${dn || un || "?"}（${role || "?"}）`;
   }catch(e){
-    document.getElementById("me").textContent = "未ログイン（ログインしてください）";
     ME = null;
+    document.getElementById("me").textContent = "未ログイン（ログインしてください）";
   }
 }
 
@@ -182,9 +220,6 @@ function renderCommentItem(c){
 /* ---------- actions ---------- */
 function wire(div,p){
   const id = Number(p.id);
-
-  const btnNew = document.getElementById("btnNew");
-  btnNew.onclick = () => location.href = "/posts_new.html";
 
   const btnEdit = div.querySelector(".btnEdit");
   if(btnEdit){
@@ -280,6 +315,7 @@ async function refresh(){
 }
 
 document.getElementById("btnRefresh").onclick = refresh;
+document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
 
 (async () => {
   await loadMe();

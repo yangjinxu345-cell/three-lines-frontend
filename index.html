@@ -1,64 +1,259 @@
-<script>
-  async function apiMe() {
-    const r = await fetch("/api/auth/me", {
-      cache: "no-store",
-      credentials: "include",
-    });
-    const j = await r.json();
-    return j && j.ok ? j.user : null;
-  }
-
-  async function ensureLogin() {
-    try {
-      const user = await apiMe();
-      if (!user) {
-        // 统一跳 login.html
-        location.replace("/login.html?next=/index.html");
-        return;
-      }
-      const el = document.getElementById("loginInfo");
-      if (el) el.textContent = `ログイン：${user.display_name}（${user.username}） role=${user.role}`;
-    } catch {
-      location.replace("/login.html?next=/index.html");
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3行アプリ開発プロジェクト</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --blue1:#1e63ff;
+      --blue2:#0b5ed7;
+      --card:#ffffff;
+      --text:#101828;
+      --muted:#667085;
+      --border:#e6e9f2;
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+      --r:18px;
     }
-  }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      background:linear-gradient(135deg,var(--blue2),#2f7bff);
+      color:#fff;
+      padding:44px 16px 70px;
+      position:relative;
+      overflow:hidden;
+    }
+    header:before, header:after{
+      content:"";
+      position:absolute;
+      width:520px;height:520px;border-radius:50%;
+      background:rgba(255,255,255,.10);
+      filter:blur(0px);
+      top:-220px;left:-180px;
+    }
+    header:after{
+      width:620px;height:620px;
+      top:-280px;right:-240px;left:auto;
+      background:rgba(255,255,255,.08);
+    }
 
-  async function hardLogout() {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        cache: "no-store",
+    .wrap{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:16px;
+    }
+    .leftTop{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      color:#eaf2ff;
+      font-weight:700;
+    }
+    .userpill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:14px;
+      background:rgba(255,255,255,.14);
+    }
+
+    .btn{
+      border:0;border-radius:14px;padding:10px 14px;
+      font-weight:900;cursor:pointer;
+      display:inline-flex;align-items:center;gap:10px;
+      text-decoration:none;
+    }
+    .btn.ghost{
+      background:rgba(255,255,255,.14);
+      color:#fff;
+    }
+    .btn.ghost:hover{background:rgba(255,255,255,.18)}
+    .btn.danger{
+      background:#ff4d4f;
+      color:#fff;
+      box-shadow:0 10px 20px rgba(255,77,79,.18);
+    }
+    .btn.danger:hover{filter:brightness(1.03)}
+
+    h1{margin:0 0 8px;font-size:46px;letter-spacing:1px}
+    .sub{opacity:.92}
+
+    main{padding:0 16px 28px}
+    .card{
+      background:var(--card);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:22px;
+      margin-top:-42px;
+      border:1px solid rgba(255,255,255,.65);
+    }
+
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+    a.tile{
+      display:flex;gap:14px;
+      text-decoration:none;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:16px;
+      background:#fff;
+      transition:all .15s ease;
+    }
+    a.tile:hover{
+      transform:translateY(-1px);
+      border-color:#bcd2ff;
+      box-shadow:0 10px 18px rgba(11,94,215,.10);
+      background:#f7faff;
+    }
+    .ico{
+      width:44px;height:44px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background:#eef4ff;
+      border:1px solid #dbe7ff;
+      flex:0 0 auto;
+      font-size:20px;
+    }
+    .t{font-weight:900;font-size:18px;margin-top:2px}
+    .d{color:var(--muted);margin-top:6px;line-height:1.4}
+    .note{margin-top:10px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="leftTop">
+          <span class="userpill" id="userpill">👤 確認中…</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <a class="btn ghost" href="/account.html">👤 アカウント</a>
+          <button class="btn danger" id="btnLogout">⏻ Logout</button>
+        </div>
+      </div>
+
+      <h1>3行アプリ開発プロジェクト</h1>
+      <div class="sub">授業内容を「3行」で振り返る学習支援アプリ</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <h2 style="margin:0 0 12px;">メニュー</h2>
+
+        <div class="grid">
+          <a class="tile" href="/posts.html">
+            <div class="ico">📝</div>
+            <div>
+              <div class="t">3行投稿</div>
+              <div class="d">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/questions.html">
+            <div class="ico">💬</div>
+            <div>
+              <div class="t">質問掲示板</div>
+              <div class="d">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/quizzes.html">
+            <div class="ico">🧠</div>
+            <div>
+              <div class="t">クイズ</div>
+              <div class="d">投稿内容から思い出しクイズを表示。復習に使えます。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/reminders.html">
+            <div class="ico">⏰</div>
+            <div>
+              <div class="t">復習リマインダー</div>
+              <div class="d">翌日/1週間後などの復習を習慣化。期限が来た内容を確認。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/ranking.html">
+            <div class="ico">🏆</div>
+            <div>
+              <div class="t">ランキング</div>
+              <div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/settings.html">
+            <div class="ico">⚙️</div>
+            <div>
+              <div class="t">設定</div>
+              <div class="d">表示や動作の設定（ランキング非表示など）。</div>
+            </div>
+          </a>
+        </div>
+
+        <div class="note" id="note"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
         credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          ...(options.headers || {})
+        }
       });
-    } catch {}
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      return { ok: res.ok, status: res.status, data };
+    }
 
-    // 清本地数据（避免串号）
-    try { localStorage.clear(); } catch {}
-    try { sessionStorage.clear(); } catch {}
-
-    // 清缓存
-    try {
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
+    async function requireLogin(){
+      const r = await api("/api/auth/me");
+      if(!r.ok || !r.data || r.data.ok !== true || !r.data.user){
+        // 未ログインなら login へ
+        location.replace("/login.html?v=" + Date.now());
+        return null;
       }
-    } catch {}
+      return r.data.user;
+    }
 
-    // 注销 SW
-    try {
-      if (navigator.serviceWorker) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
+    async function doLogout(){
+      try{
+        await api("/api/auth/logout", { method: "POST" });
+      }catch(e){
+        // 失敗してもローカルは掃除してログインへ
       }
-    } catch {}
 
-    location.replace("/login.html");
-  }
+      // 念のためローカル保存をクリア
+      try{
+        localStorage.removeItem("teacher_name");
+        localStorage.removeItem("teacher_key");
+        localStorage.removeItem("auth_user");
+      }catch(e){}
 
-  // 绑定 logout
-  const btn = document.getElementById("btnLogout");
-  if (btn) btn.addEventListener("click", hardLogout);
+      location.assign("/login.html?v=" + Date.now());
+    }
 
-  
-  ensureLogin();
-</script>
+    (async ()=>{
+      const user = await requireLogin();
+      if(!user) return;
+
+      const pill = document.getElementById("userpill");
+      pill.textContent = `👤 ${user.display_name}（${user.username} / ${user.role}）`;
+
+      document.getElementById("btnLogout").addEventListener("click", doLogout);
+    })();
+  </script>
+</body>
+</html>

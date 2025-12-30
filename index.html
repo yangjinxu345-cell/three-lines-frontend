@@ -5,30 +5,160 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;margin:0;background:#f5f7fb;color:#111}
-    header{background:#0b5ed7;color:#fff;padding:48px 16px}
-    .wrap{max-width:1100px;margin:0 auto}
-    h1{margin:0 0 8px;font-size:44px;letter-spacing:1px}
-    .sub{opacity:.9}
-    main{padding:24px 16px}
-    .card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --brand:#0b5ed7;
+      --brand2:#1d4ed8;
+      --line:#e6e9f2;
+      --shadow:0 12px 36px rgba(16,24,40,.10);
+      --shadow2:0 10px 24px rgba(16,24,40,.10);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
+      margin:0;background:var(--bg);color:var(--text);
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+    header{
+      background:linear-gradient(135deg,var(--brand),#2563eb);
+      color:#fff;
+      padding:46px 0 34px;
+      position:relative;
+      overflow:hidden;
+    }
+    header:before{
+      content:"";
+      position:absolute; inset:-120px -120px auto auto;
+      width:420px;height:420px;border-radius:50%;
+      background:rgba(255,255,255,.10);
+      filter:blur(0px);
+      transform:rotate(12deg);
+    }
+    header:after{
+      content:"";
+      position:absolute; inset:auto auto -160px -140px;
+      width:520px;height:520px;border-radius:50%;
+      background:rgba(255,255,255,.10);
+    }
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:12px;margin-bottom:22px;position:relative;z-index:2;
+    }
+    .leftnav a{
+      color:#eaf2ff;text-decoration:none;font-weight:700;
+      opacity:.95;
+    }
+    .leftnav a:hover{opacity:1;text-decoration:underline}
+    .rightnav{display:flex;gap:10px;align-items:center}
+    .btn{
+      appearance:none;border:0;cursor:pointer;
+      border-radius:12px;padding:10px 14px;
+      font-weight:800;
+      display:inline-flex;align-items:center;gap:8px;
+      transition:transform .08s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease;
+      user-select:none;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btnGhost{
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(6px);
+    }
+    .btnGhost:hover{background:rgba(255,255,255,.18)}
+    .btnDanger{
+      background:#ef4444;color:#fff;
+      box-shadow:0 10px 18px rgba(239,68,68,.25);
+    }
+    .btnDanger:hover{opacity:.95}
+    h1{
+      margin:0 0 8px;
+      font-size:44px;letter-spacing:.5px;
+      position:relative;z-index:2;
+    }
+    .sub{
+      opacity:.92;
+      position:relative;z-index:2;
+    }
+
+    main{padding:26px 0 40px}
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(230,233,242,.75);
+    }
+    .titleRow{
+      display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+      margin-bottom:14px;
+    }
+    h2{margin:0;font-size:20px}
+    .hint{color:var(--muted);font-size:13px;margin:0}
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+      margin-top:12px;
+    }
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
-    a.btn{display:block;text-decoration:none;color:#111;border:1px solid #e6e9f2;border-radius:14px;padding:16px}
-    a.btn:hover{border-color:#bcd2ff;background:#f3f7ff}
-    .t{font-weight:800;font-size:18px}
-    .d{color:#666;margin-top:6px}
-    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:14px}
-    .pill{padding:6px 10px;border-radius:999px;background:#f1f3f7;color:#333;font-size:12px}
-    .dot{width:10px;height:10px;border-radius:999px;background:#aaa;display:inline-block}
-    .dot.ok{background:#2fb344}.dot.ng{background:#fa5252}.dot.wait{background:#fab005}
-    pre{background:#0b1020;color:#dfe7ff;padding:12px;border-radius:12px;overflow:auto}
-    button{border:0;border-radius:12px;padding:10px 14px;background:#0b5ed7;color:#fff;font-weight:700;cursor:pointer}
+    .tile{
+      text-decoration:none;color:var(--text);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:16px 16px;
+      background:linear-gradient(180deg,#fff, #fbfcff);
+      box-shadow:0 0 0 rgba(0,0,0,0);
+      transition:transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+      display:flex;gap:14px;align-items:flex-start;
+    }
+    .tile:hover{
+      transform:translateY(-2px);
+      border-color:#c7dbff;
+      box-shadow:var(--shadow2);
+    }
+    .ico{
+      width:42px;height:42px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background:#eef5ff;border:1px solid #dbe9ff;
+      flex:0 0 auto;
+    }
+    .ico span{font-size:20px}
+    .t{font-weight:900;font-size:18px;margin-top:1px}
+    .d{color:var(--muted);margin-top:6px;line-height:1.45}
+    .footerNote{
+      margin-top:16px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:#f6f8ff;
+      border:1px dashed #d8e2ff;
+      color:#41506b;
+      font-size:13px;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
+      <div class="topbar">
+        <div class="leftnav">
+          <a href="/">← メニュー</a>
+        </div>
+        <div class="rightnav">
+          <a class="btn btnGhost" href="/account.html" style="text-decoration:none;">
+            <span>👤</span><span>アカウント</span>
+          </a>
+          <button id="btnLogout" class="btn btnDanger" type="button">
+            <span>⎋</span><span>Logout</span>
+          </button>
+        </div>
+      </div>
+
       <h1>3行アプリ開発プロジェクト</h1>
       <div class="sub">授業内容を「3行」で振り返る学習支援アプリ</div>
     </div>
@@ -37,56 +167,94 @@
   <main>
     <div class="wrap">
       <div class="card">
-        <h2 style="margin:0 0 12px;">メニュー</h2>
+        <div class="titleRow">
+          <div>
+            <h2>メニュー</h2>
+            <p class="hint">使いたい機能を選んでください</p>
+          </div>
+        </div>
+
         <div class="grid">
-          <a class="btn" href="/posts.html"><div class="t">3行投稿</div><div class="d">授業の要点を3行で投稿</div></a>
-          <a class="btn" href="/questions.html"><div class="t">質問掲示板</div><div class="d">疑問投稿→回答→学び合い</div></a>
-          <a class="btn" href="/quizzes.html"><div class="t">クイズ</div><div class="d">思い出しクイズ一覧</div></a>
-          <a class="btn" href="/reminders.html"><div class="t">復習リマインダー</div><div class="d">翌日/1週間後の復習</div></a>
-          <a class="btn" href="/ranking.html"><div class="t">ランキング</div><div class="d">投稿/回答数の貢献度</div></a>
-          <a class="btn" href="/settings.html"><div class="t">設定</div><div class="d">表示・動作設定</div></a>
+          <a class="tile" href="/posts.html">
+            <div class="ico"><span>📝</span></div>
+            <div>
+              <div class="t">3行投稿</div>
+              <div class="d">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/questions.html">
+            <div class="ico"><span>💬</span></div>
+            <div>
+              <div class="t">質問掲示板</div>
+              <div class="d">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/quizzes.html">
+            <div class="ico"><span>🧠</span></div>
+            <div>
+              <div class="t">クイズ</div>
+              <div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/reminders.html">
+            <div class="ico"><span>⏰</span></div>
+            <div>
+              <div class="t">復習リマインダー</div>
+              <div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/ranking.html">
+            <div class="ico"><span>🏆</span></div>
+            <div>
+              <div class="t">ランキング</div>
+              <div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
+            </div>
+          </a>
+
+          <a class="tile" href="/settings.html">
+            <div class="ico"><span>⚙️</span></div>
+            <div>
+              <div class="t">設定</div>
+              <div class="d">表示や動作の設定（ランキング非表示など）。</div>
+            </div>
+          </a>
         </div>
 
-        <div class="row">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="dot" class="dot wait"></span>
-            <span id="status" style="color:#555">API checking...</span>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <span class="pill">Base: /api/*</span>
-            <button id="btn">更新</button>
-          </div>
+        <div class="footerNote">
+          ※ 先生モード／管理者機能は、ログイン後に利用できます。<br/>
+          ※ うまく動かない時は、いったん Logout → Login を試してください。
         </div>
-
-        <pre id="out">{}</pre>
       </div>
     </div>
   </main>
 
   <script>
-    async function apiGet(path){
-      const res = await fetch(path, { headers:{ "Accept":"application/json" }});
+    async function apiPost(path, body){
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: body ? JSON.stringify(body) : "{}"
+      });
       const text = await res.text();
-      let data; try{ data = JSON.parse(text);}catch{ data = text;}
-      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+      let data = null;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!res.ok) throw new Error("HTTP " + res.status + " " + (data?.error || text));
       return data;
     }
-    async function health(){
-      const dot=document.getElementById("dot");
-      const status=document.getElementById("status");
-      const out=document.getElementById("out");
-      dot.className="dot wait"; status.textContent="API checking...";
+
+    document.getElementById("btnLogout").addEventListener("click", async () => {
       try{
-        const data = await apiGet("/api/health");
-        dot.className="dot ok"; status.textContent="API: OK";
-        out.textContent = JSON.stringify(data,null,2);
+        await apiPost("/api/auth/logout", {});
       }catch(e){
-        dot.className="dot ng"; status.textContent="API: NG";
-        out.textContent = String(e);
+        // 即使 logout API 报错，也做前端跳转，避免卡住
+        console.warn(e);
       }
-    }
-    document.getElementById("btn").addEventListener("click", health);
-    health();
+      location.href = "/login";
+    });
   </script>
 </body>
 </html>

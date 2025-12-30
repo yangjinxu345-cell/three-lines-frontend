@@ -1,12 +1,11 @@
-const CACHE_NAME = "three-lines-v1";
+const CACHE_NAME = "three-lines-v2";
 
-// 先缓存：入口 + 各页面（你现在的多页面结构很适合这样做）
 const PRECACHE_URLS = [
   "/",
   "/index.html",
-  "/login",
+  "/login.html",
   "/account.html",
-  "/admin_users",
+  "/admin_users.html",
   "/posts.html",
   "/questions.html",
   "/question.html",
@@ -14,7 +13,9 @@ const PRECACHE_URLS = [
   "/reminders.html",
   "/ranking.html",
   "/settings.html",
-  "/manifest.webmanifest"
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png"
 ];
 
 // 安装：预缓存
@@ -35,32 +36,45 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// fetch：
-// - HTML/静态资源：cache-first（离线可打开）
-// - /api/*：network-only（避免缓存登录态/数据错乱）
+// fetch
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // 只处理同源请求
   if (url.origin !== self.location.origin) return;
 
-  // API 不缓存
+  // API：永远走网络
   if (url.pathname.startsWith("/api/")) {
     return;
   }
 
+  // HTML：network-first（更新友好）
+  if (req.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // 其他静态资源：cache-first
   event.respondWith(
     caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        // 只缓存成功且 GET 的响应
-        if (req.method === "GET" && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      }).catch(() => cached);
+      return (
+        cached ||
+        fetch(req).then((res) => {
+          if (res.ok && req.method === "GET") {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+      );
     })
   );
 });

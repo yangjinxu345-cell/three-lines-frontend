@@ -82,8 +82,40 @@
 
     function gotoLogin() {
       const next = encodeURIComponent(location.pathname || "/index.html");
-      // ✅ 统一到 /login.html（静态站点最稳）
       location.replace("/login.html?next=" + next);
+    }
+
+    async function doLogoutHard() {
+      // 先 POST（如果后端支持），失败就 fallback GET（你之前截图证明 GET 可用）
+      try {
+        const r = await fetch("/api/auth/logout?ts=" + Date.now(), {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: "{}",
+        });
+        if (!r.ok) throw new Error("POST logout failed");
+      } catch (e) {
+        try {
+          await fetch("/api/auth/logout?ts=" + Date.now(), {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: { "Accept": "application/json" },
+          });
+        } catch {}
+      }
+
+      // 清理前端缓存（不强制，但能减少你遇到的“换账号不生效”）
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } catch {}
     }
 
     async function initAuthGate() {
@@ -104,26 +136,9 @@
       document.getElementById("btnAccount").onclick = () => location.href = "/account.html";
 
       document.getElementById("btnLogout").onclick = async () => {
-        try {
-          await fetch("/api/auth/logout?ts=" + Date.now(), {
-            method: "POST",
-            credentials: "include",
-            cache: "no-store",
-            headers: { "Content-Type": "application/json" },
-            body: "{}",
-          });
-        } catch {}
-
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-          if (window.caches && caches.keys) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(k => caches.delete(k)));
-          }
-        } catch {}
-
-        gotoLogin();
+        await doLogoutHard();
+        // 登出后，明确回登录页（而不是 /，避免被 _redirects 影响你调试）
+        location.replace("/login.html");
       };
     }
 

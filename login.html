@@ -3,117 +3,70 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3行アプリ開発プロジェクト</title>
-
+  <title>ログイン</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#1f5eff" />
 
   <style>
     body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#f5f7fb}
-    .hero{background:radial-gradient(circle at 20% 20%, rgba(255,255,255,.15), transparent 35%),
-                      radial-gradient(circle at 80% 30%, rgba(255,255,255,.12), transparent 40%),
-                      linear-gradient(135deg,#1f5eff,#2b7cff);
-          color:#fff;padding:34px 20px}
-    .wrap{max-width:1100px;margin:0 auto}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px}
-    .leftlink{color:#fff;text-decoration:none;font-weight:800;opacity:.95}
-    .actions{display:flex;gap:10px;align-items:center}
-    .btn{border:0;border-radius:14px;padding:10px 14px;font-weight:800;cursor:pointer}
-    .btn-ghost{background:rgba(255,255,255,.14);color:#fff;backdrop-filter: blur(8px)}
-    .btn-ghost:hover{background:rgba(255,255,255,.18)}
-    .btn-danger{background:#ff4d4f;color:#fff}
-    .btn-danger:hover{filter:brightness(.95)}
-    .title{font-size:46px;font-weight:900;margin:18px 0 8px;letter-spacing:.02em}
-    .sub{opacity:.92}
-    .card{max-width:1100px;margin:-22px auto 24px;background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.08);padding:18px 18px 10px}
-    .h2{font-size:22px;font-weight:900;margin:6px 0 2px}
-    .desc{color:#64748b;font-size:13px;margin:0 0 12px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}}
-    .tile{display:flex;gap:12px;align-items:flex-start;border:1px solid #eef2ff;border-radius:16px;padding:14px;text-decoration:none;color:#0f172a}
-    .tile:hover{border-color:#c7d2fe;box-shadow:0 8px 18px rgba(31,94,255,.10)}
-    .icon{width:44px;height:44px;border-radius:14px;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:20px}
-    .t-title{font-weight:900}
-    .t-sub{color:#64748b;font-size:13px;margin-top:4px}
-    .foot{padding:0 20px 26px;max-width:1100px;margin:0 auto;color:#94a3b8;font-size:12px}
+    .hero{background:linear-gradient(135deg,#1f5eff,#2b7cff);color:#fff;padding:40px 20px}
+    .wrap{max-width:980px;margin:0 auto}
+    .title{font-size:44px;font-weight:800;letter-spacing:.02em;margin:0}
+    .sub{opacity:.9;margin-top:8px}
+    .card{max-width:760px;margin:-28px auto 24px;background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.08);padding:22px}
+    .row{display:grid;grid-template-columns:1fr;gap:14px}
+    label{font-size:13px;color:#334155}
+    input{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none}
+    input:focus{border-color:#1f5eff;box-shadow:0 0 0 3px rgba(31,94,255,.15)}
+    .btns{display:flex;gap:12px;align-items:center;margin-top:10px}
+    button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer}
+    .primary{background:#1f5eff;color:#fff}
+    .primary:hover{filter:brightness(.95)}
+    .ghost{background:#eef2ff;color:#1f5eff}
+    .msg{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0b1220;color:#e5e7eb;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;font-size:12.5px;white-space:pre-wrap}
+    .toplink{color:#fff;text-decoration:none;font-weight:700}
   </style>
 </head>
 
 <body>
   <div class="hero">
     <div class="wrap">
-      <div class="topbar">
-        <a class="leftlink" href="#">← メニュー</a>
-
-        <div class="actions">
-          <button class="btn btn-ghost" id="btnAccount">👤 アカウント</button>
-          <button class="btn btn-danger" id="btnLogout">⏻ Logout</button>
-        </div>
-      </div>
-
-      <div class="title">3行アプリ開発プロジェクト</div>
-      <div class="sub">授業内容を「3行」で振り返る学習支援アプリ</div>
+      <a class="toplink" href="/">← メニュー</a>
+      <h1 class="title">ログイン</h1>
+      <div class="sub">管理者が発行したアカウントでログインしてください。</div>
     </div>
   </div>
 
   <div class="card">
-    <div class="h2">メニュー</div>
-    <p class="desc">使いたい機能を選んでください</p>
+    <form id="form" class="row">
+      <div>
+        <label>ユーザー名（username）</label>
+        <input id="username" autocomplete="username" required />
+      </div>
+      <div>
+        <label>パスワード</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+      </div>
 
-    <div class="grid">
-      <a class="tile" href="/posts">
-        <div class="icon">📝</div>
-        <div>
-          <div class="t-title">3行投稿</div>
-          <div class="t-sub">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div>
-        </div>
-      </a>
+      <div class="btns">
+        <button class="primary" type="submit">ログイン</button>
+        <button class="ghost" type="button" id="btnMe">/api/auth/me 確認</button>
+      </div>
 
-      <a class="tile" href="/questions">
-        <div class="icon">💬</div>
-        <div>
-          <div class="t-title">質問掲示板</div>
-          <div class="t-sub">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div>
-        </div>
-      </a>
-
-      <a class="tile" href="/quizzes">
-        <div class="icon">🧠</div>
-        <div>
-          <div class="t-title">クイズ</div>
-          <div class="t-sub">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div>
-        </div>
-      </a>
-
-      <a class="tile" href="/reminders">
-        <div class="icon">⏰</div>
-        <div>
-          <div class="t-title">復習リマインダー</div>
-          <div class="t-sub">授業後の復習を習慣化。期限が来た内容を確認できます。</div>
-        </div>
-      </a>
-
-      <a class="tile" href="/ranking">
-        <div class="icon">🏆</div>
-        <div>
-          <div class="t-title">ランキング</div>
-          <div class="t-sub">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
-        </div>
-      </a>
-
-      <a class="tile" href="/settings">
-        <div class="icon">⚙️</div>
-        <div>
-          <div class="t-title">設定</div>
-          <div class="t-sub">表示や動作の設定（ランキング非表示など）。</div>
-        </div>
-      </a>
-    </div>
+      <div id="msg" class="msg" style="display:none"></div>
+    </form>
   </div>
 
-  <div class="foot" id="foot"></div>
-
   <script>
+    const $ = (id) => document.getElementById(id);
+    const msg = (t) => { $("msg").style.display="block"; $("msg").textContent = t; };
+
+    function getNext() {
+      const u = new URL(location.href);
+      const next = u.searchParams.get("next");
+      return next && next.startsWith("/") ? next : "/index.html";
+    }
+
     async function api(path, opts = {}) {
       const res = await fetch(path, {
         ...opts,
@@ -126,37 +79,40 @@
       return { res, data };
     }
 
-    function toLogin() {
-      const next = encodeURIComponent("/index.html");
-      location.replace("/login.html?next=" + next);
-    }
-
-    async function initAuth() {
+    $("btnMe").addEventListener("click", async () => {
       const r = await api("/api/auth/me");
-      const user = r.data && r.data.user ? r.data.user : null;
+      msg(`GET /api/auth/me\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
+    });
 
-      if (!user) {
-        toLogin();
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      $("msg").style.display="none";
+
+      const username = $("username").value.trim();
+      const password = $("password").value;
+
+      const r = await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!r.res.ok || !r.data || r.data.ok !== true) {
+        msg(`LOGIN FAIL\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
         return;
       }
 
-      // 右上角显示当前账号
-      const btn = document.getElementById("btnAccount");
-      btn.textContent = `👤 ${user.display_name} (${user.role})`;
-      btn.onclick = () => location.href = "/account";
+      // 立刻再确认一次 me，确保 cookie/session 真生效
+      const me = await api("/api/auth/me");
+      if (!me.data || !me.data.user) {
+        msg(`ログイン直後の /api/auth/me で user が取れません。\nHTTP ${me.res.status}\n${JSON.stringify(me.data)}`);
+        return;
+      }
 
-      document.getElementById("foot").textContent =
-        `ログイン中: ${user.display_name} / ${user.username} / role=${user.role}`;
-    }
-
-    document.getElementById("btnLogout").addEventListener("click", async () => {
-      const r = await api("/api/auth/logout", { method: "POST" });
-      // 不管返回什么，都强制回到登录页（避免缓存干扰）
-      location.replace("/login.html?v=" + Date.now());
+      // 强制绕开缓存：加时间戳
+      const next = getNext();
+      const sep = next.includes("?") ? "&" : "?";
+      location.replace(next + sep + "v=" + Date.now());
     });
-
-    // 启动
-    initAuth();
   </script>
 </body>
 </html>

@@ -52,8 +52,15 @@
   </main>
 
   <script>
+    const params = new URLSearchParams(location.search);
+    const next = params.get("next") || "/index.html";
+
     async function api(path,opt={}){
-      const res = await fetch(path,opt);
+      const res = await fetch(path,{
+        credentials:"include",
+        cache:"no-store",
+        ...opt
+      });
       const text = await res.text();
       let data; try{ data = JSON.parse(text);}catch{ data=text; }
       if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
@@ -67,15 +74,17 @@
       try{
         const username = document.getElementById("username").value.trim();
         const password = document.getElementById("password").value;
+
         const data = await api("/api/auth/login",{
           method:"POST",
           headers:{ "Content-Type":"application/json" },
           body: JSON.stringify({ username, password })
         });
+
         out.textContent = JSON.stringify(data, null, 2);
 
-        // 登录成功后跳转（你也可以改成 /reminders.html）
-        location.href = "/index.html";
+        // ✅ 登录成功后按 next 跳转
+        location.replace(next);
       }catch(e){
         out.textContent = String(e?.message||e);
       }

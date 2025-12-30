@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>新規投稿</title>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e5e7eb;--pri:#2563eb;--shadow:0 10px 30px rgba(2,6,23,.08);--r:18px}
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;color:var(--text)}
+    header{background:linear-gradient(135deg,var(--pri),#1d4ed8);color:#fff}
+    .wrap{max-width:900px;margin:0 auto;padding:18px}
+    a{color:#fff;text-decoration:none;font-weight:800}
+    h1{margin:8px 0 0}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-top:14px}
+    label{display:block;font-weight:800;margin-top:12px;color:#334155}
+    input,textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px}
+    textarea{min-height:70px;resize:vertical}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:#eef2ff;border:1px solid #c7d2fe;color:#1e40af;font-weight:900}
+    .btn{border:0;border-radius:14px;padding:10px 14px;font-weight:900;cursor:pointer}
+    .btn.primary{background:var(--pri);color:#fff}
+    .btn.gray{background:#475569;color:#fff}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .muted{color:var(--muted);font-size:13px}
+    pre{background:#0b1220;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <div style="opacity:.95"><a href="/posts.html">← 一覧へ</a></div>
+      <h1>新規投稿</h1>
+      <div class="muted" id="me">ログイン情報：読み込み中…</div>
+    </div>
+    <div class="pill">※ 3行のうち1行以上でOK</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <label>名前（自動）</label>
+    <input id="name" readonly />
+
+    <label>クラス</label>
+    <input id="class_name" placeholder="例：ITE2" />
+
+    <label>授業日</label>
+    <input id="lesson_date" type="date" />
+
+    <label>授業名 / テーマ</label>
+    <input id="topic" placeholder="例：SQL 外部結合" />
+
+    <label><span class="pill">1行目</span></label>
+    <textarea id="line1" placeholder="ポイント①"></textarea>
+
+    <label><span class="pill">2行目</span></label>
+    <textarea id="line2" placeholder="ポイント②"></textarea>
+
+    <label><span class="pill">3行目</span></label>
+    <textarea id="line3" placeholder="ポイント③"></textarea>
+
+    <div class="row">
+      <button class="btn primary" id="btnSave">保存</button>
+      <button class="btn gray" id="btnCancel">キャンセル</button>
+    </div>
+
+    <pre id="out" style="display:none"></pre>
+  </div>
+</main>
+
+<script>
+async function api(path,opt={}){
+  const res=await fetch(path,opt);
+  const text=await res.text();
+  let data; try{data=JSON.parse(text)}catch{data=text}
+  if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+  if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
+  return data;
+}
+let ME=null;
+async function loadMe(){
+  const r = await api("/api/auth/me");
+  const u = r.user || r.item || r.me || r;
+  ME=u;
+  document.getElementById("me").textContent = `ログイン：${u.display_name}（${u.role}）`;
+  document.getElementById("name").value = u.display_name;
+}
+document.getElementById("btnCancel").onclick = ()=>location.href="/posts.html";
+
+document.getElementById("lesson_date").value = new Date().toISOString().slice(0,10);
+
+document.getElementById("btnSave").onclick = async ()=>{
+  const body = {
+    name: document.getElementById("name").value.trim(),
+    class_name: document.getElementById("class_name").value.trim(),
+    lesson_date: document.getElementById("lesson_date").value,
+    topic: document.getElementById("topic").value.trim(),
+    line1: document.getElementById("line1").value.trim(),
+    line2: document.getElementById("line2").value.trim(),
+    line3: document.getElementById("line3").value.trim()
+  };
+  if(!(body.line1 || body.line2 || body.line3)){
+    alert("1行以上入力してください");
+    return;
+  }
+
+  const out=document.getElementById("out");
+  out.style.display="";
+  out.textContent="saving...";
+  try{
+    const r = await api("/api/posts",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    out.textContent = JSON.stringify(r,null,2);
+    location.href="/posts.html";
+  }catch(e){
+    out.textContent = String(e.message||e);
+  }
+};
+
+loadMe().catch(()=>{ document.getElementById("me").textContent="未ログイン"; });
+</script>
+</body>
+</html>

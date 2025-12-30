@@ -34,13 +34,17 @@ export async function onRequest(context) {
       const class_name = str(body.class_name, 0, 50);
       const lesson_date = normalizeDate(body.lesson_date); // YYYY-MM-DD
       const topic = str(body.topic, 0, 100);
-      const line1 = str(body.line1, 1, 200);
-      const line2 = str(body.line2, 1, 200);
-      const line3 = str(body.line3, 1, 200);
 
-      if (!name || !lesson_date || !line1 || !line2 || !line3) {
+      // ★ 変更点：3行は「全部必須」→「どれか1行以上あればOK」
+      const line1 = str(body.line1, 0, 200);
+      const line2 = str(body.line2, 0, 200);
+      const line3 = str(body.line3, 0, 200);
+
+      const hasAnyLine = !!(line1 || line2 || line3);
+
+      if (!name || !lesson_date || !hasAnyLine) {
         return json(
-          { ok: false, error: "Missing required fields: name, lesson_date, line1, line2, line3" },
+          { ok: false, error: "Missing required fields: name, lesson_date, and at least one of line1/line2/line3" },
           400,
           headers
         );
@@ -57,7 +61,9 @@ export async function onRequest(context) {
         class_name || null,
         lesson_date,
         topic || null,
-        line1, line2, line3
+        line1 || "",
+        line2 || "",
+        line3 || ""
       ).run();
 
       const postId = ins.meta?.last_row_id;
@@ -74,9 +80,13 @@ export async function onRequest(context) {
         name, postId, due7, "1週間復習"
       ).run();
 
-      // 3) auto create quizzes: simple “free” questions
-      const q1 = `【思い出し】今日のポイント①を自分の言葉で説明して：${shorten(line1, 60)}`;
-      const q2 = `【思い出し】今日のポイント②/③の関係を説明して：${shorten(line2, 60)} / ${shorten(line3, 60)}`;
+      // 3) auto create quizzes: empty対策（空なら別の行を使う）
+      const pick1 = firstNonEmpty(line1, line2, line3, "（内容なし）");
+      const pick2a = firstNonEmpty(line2, line3, line1, "（内容なし）");
+      const pick2b = firstNonEmpty(line3, line2, line1, "（内容なし）");
+
+      const q1 = `【思い出し】今日のポイントを自分の言葉で説明して：${shorten(pick1, 60)}`;
+      const q2 = `【思い出し】ポイント同士の関係を説明して：${shorten(pick2a, 60)} / ${shorten(pick2b, 60)}`;
 
       await env.DB.prepare(`
         INSERT INTO quizzes (name, related_post_id, due_date, question, type)
@@ -149,4 +159,11 @@ function clampInt(v, min, max, def) {
 function shorten(s, n) {
   const t = String(s || "");
   return t.length > n ? t.slice(0, n) + "…" : t;
+}
+function firstNonEmpty(...vals) {
+  for (const v of vals) {
+    const s = String(v ?? "").trim();
+    if (s) return s;
+  }
+  return "";
 }

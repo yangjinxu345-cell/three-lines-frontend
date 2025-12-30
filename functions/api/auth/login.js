@@ -1,6 +1,5 @@
 export async function onRequest(context) {
   const { request, env } = context;
-
   if (request.method === "OPTIONS") return corsPreflight();
   const headers = corsHeaders();
 
@@ -13,7 +12,7 @@ export async function onRequest(context) {
 
     const username = str(body.username, 1, 50);
     const password = str(body.password, 1, 200);
-    if (!username || !password) return json({ ok: false, error: "Missing username/password" }, 400, headers);
+    if (!username || !password) return json({ ok: false, error: "Missing: username/password" }, 400, headers);
 
     const user = await env.DB.prepare(`
       SELECT id, username, display_name, role, password_hash, password_salt
@@ -23,56 +22,41 @@ export async function onRequest(context) {
 
     if (!user) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
 
-    // ---- 1) verify (兼容旧数据) ----
-    let verified = false;
+    const ok = await verifyPassword(password, user.password_hash, user.password_salt);
+    if (!ok) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
 
-    const hash = String(user.password_hash ?? "").trim();
-    const salt = String(user.password_salt ?? "").trim();
-
-    const looksLegacy =
-      !hash || !salt || hash === "admin" || salt === "admin" || hash.length < 32 || salt.length < 8;
-
-    if (looksLegacy) {
-      // 旧数据：先用“明文==password_hash”或“明文==username”等方式兜底一次
-      // 你的截图里 hash/salt 都是 "admin"：所以 admin/admin 会通过
-      if (password === hash || password === salt) verified = true;
-    } else {
-      verified = await verifyPasswordPBKDF2(password, salt, hash);
-    }
-
-    if (!verified) return json({ ok: false, error: "Invalid credentials" }, 401, headers);
-
-    // ---- 2) 若是旧数据，登录成功后立刻升级为 PBKDF2 ----
-    if (looksLegacy) {
-      const newSalt = makeSalt(16);
-      const newHash = await hashPasswordPBKDF2(password, newSalt);
-      await env.DB.prepare(`
-        UPDATE users
-        SET password_salt = ?, password_hash = ?
-        WHERE id = ?
-      `).bind(newSalt, newHash, user.id).run();
-    }
-
-    // ---- 3) create session (与你的 sessions 表一致：token/user_id/expires_at) ----
-    const sessionToken = bytesToB64Url(crypto.getRandomValues(new Uint8Array(32)));
-    const ttlSec = 60 * 60 * 24 * 7; // 7 days
-    const expIso = new Date(Date.now() + ttlSec * 1000).toISOString();
+    // create session
+    const token = randomToken();
+    const nowIso = isoNow();
+    const expiresIso = isoAfterDays(7);
 
     await env.DB.prepare(`
-      INSERT INTO sessions (token, user_id, expires_at)
-      VALUES (?, ?, ?)
-    `).bind(sessionToken, user.id, expIso).run();
+      INSERT INTO sessions (token, user_id, created_at, expires_at)
+      VALUES (?, ?, ?, ?)
+    `).bind(token, user.id, nowIso, expiresIso).run();
 
-    // ---- 4) Set-Cookie（关键：Path=/）----
-    const cookie =
-      `session=${encodeURIComponent(sessionToken)}; ` +
-      `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${ttlSec}`;
+    // If legacy (hash/salt are plain), upgrade to PBKDF2 hash
+    if (String(user.password_hash) === String(user.password_salt) && String(user.password_hash) === password) {
+      const { hashB64, saltB64 } = await hashPasswordPBKDF2(password);
+      await env.DB.prepare(`
+        UPDATE users SET password_hash=?, password_salt=? WHERE id=?
+      `).bind(hashB64, saltB64, user.id).run();
+    }
 
-    return json(
-      { ok: true, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role } },
-      200,
-      { ...headers, "Set-Cookie": cookie }
-    );
+    const cookie = makeSessionCookie(token);
+
+    return new Response(JSON.stringify({
+      ok: true,
+      user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role },
+      expires_at: expiresIso
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        ...headers,
+        "Set-Cookie": cookie,
+      }
+    });
   } catch (e) {
     return json({ ok: false, error: String(e?.message || e) }, 500, headers);
   }
@@ -96,41 +80,104 @@ function json(obj, status = 200, headers = {}) {
     headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
   });
 }
-async function safeJson(req) {
-  try { return await req.json(); } catch { return null; }
-}
+async function safeJson(req) { try { return await req.json(); } catch { return null; } }
 function str(v, minLen, maxLen) {
   if (v === undefined || v === null) return "";
   const s = String(v).trim();
   if (s.length < minLen) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
-function bytesToB64Url(bytes) {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+
+function makeSessionCookie(token) {
+  // pages.dev is https, so Secure is OK.
+  return `session_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`;
 }
-function makeSalt(len = 16) {
-  const bytes = crypto.getRandomValues(new Uint8Array(len));
-  // 用 hex 方便存储
-  return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+function randomToken() {
+  const a = new Uint8Array(32);
+  crypto.getRandomValues(a);
+  return b64url(a);
+}
+function b64url(bytes) {
+  const bin = String.fromCharCode(...bytes);
+  const b64 = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return b64;
+}
+function isoNow() {
+  return new Date().toISOString();
+}
+function isoAfterDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
 }
 
-const PBKDF2_ITER = 100000; // ✅ Cloudflare 上限内
+// PBKDF2: iterations <= 100000 (Cloudflare limitation in your env)
+const PBKDF2_ITER = 100000;
+const PBKDF2_LEN = 32; // 256-bit
+async function hashPasswordPBKDF2(password) {
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
 
-async function hashPasswordPBKDF2(password, saltHex) {
-  const enc = new TextEncoder();
-  const salt = enc.encode(saltHex);
-  const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: PBKDF2_ITER, hash: "SHA-256" },
-    key,
-    256
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
   );
-  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("");
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITER },
+    key,
+    PBKDF2_LEN * 8
+  );
+  const hash = new Uint8Array(bits);
+
+  return { hashB64: toB64(hash), saltB64: toB64(salt) };
 }
 
-async function verifyPasswordPBKDF2(password, saltHex, storedHashHex) {
-  const h = await hashPasswordPBKDF2(password, saltHex);
-  return h === String(storedHashHex);
+async function verifyPassword(password, hashB64, saltB64) {
+  // legacy: both are same and equals plaintext
+  if (String(hashB64) === String(saltB64) && String(hashB64) === String(password)) return true;
+
+  // pbkdf2 mode
+  let salt;
+  let expected;
+  try {
+    salt = fromB64(saltB64);
+    expected = fromB64(hashB64);
+  } catch {
+    return false;
+  }
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITER },
+    key,
+    expected.length * 8
+  );
+  const got = new Uint8Array(bits);
+  return timingSafeEqual(got, expected);
+}
+
+function toB64(u8) {
+  const bin = String.fromCharCode(...u8);
+  return btoa(bin);
+}
+function fromB64(b64) {
+  const bin = atob(String(b64));
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= (a[i] ^ b[i]);
+  return diff === 0;
 }

@@ -7,7 +7,8 @@ export async function onRequest(context) {
     if (!env.DB) return json({ ok: false, error: "DB binding missing" }, 500, headers);
     if (request.method !== "GET") return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
 
-    const token = readCookie(request.headers.get("Cookie") || "", "session_token");
+    // ✅ 修复：login/logout 都用的是 cookie 名 "session"
+    const token = readCookie(request.headers.get("Cookie") || "", "session");
     if (!token) return json({ ok: true, user: null }, 200, headers);
 
     const row = await env.DB.prepare(`
@@ -19,13 +20,17 @@ export async function onRequest(context) {
 
     if (!row) return json({ ok: true, user: null }, 200, headers);
 
-    // expire check (ISO string compare is safe with toISOString format)
+    // expire check
     if (String(row.expires_at) <= new Date().toISOString()) {
       await env.DB.prepare(`DELETE FROM sessions WHERE token=?`).bind(token).run();
       return json({ ok: true, user: null }, 200, headers);
     }
 
-    return json({ ok: true, user: { id: row.id, username: row.username, display_name: row.display_name, role: row.role } }, 200, headers);
+    return json({
+      ok: true,
+      user: { id: row.id, username: row.username, display_name: row.display_name, role: row.role }
+    }, 200, headers);
+
   } catch (e) {
     return json({ ok: false, error: String(e?.message || e) }, 500, headers);
   }
@@ -33,16 +38,21 @@ export async function onRequest(context) {
 
 function readCookie(cookie, key) {
   const m = cookie.match(new RegExp(`(?:^|;\\s*)${key}=([^;]+)`));
-  return m ? m[1] : "";
+  return m ? decodeURIComponent(m[1]) : "";
 }
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-store"
   };
 }
 function corsPreflight() { return new Response(null, { status: 204, headers: corsHeaders() }); }
 function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...headers } });
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
+  });
 }

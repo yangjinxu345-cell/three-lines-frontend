@@ -5,6 +5,8 @@
 // 3) 静态资源（图片/CSS/JS）使用 Cache First
 // 4) bump 版本号强制刷新缓存
 
+
+
 const CACHE_NAME = "three-lines-v2";
 
 const PRECACHE_URLS = [

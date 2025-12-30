@@ -1,148 +1,193 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
-
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#1769ff">
-
+  <meta name="theme-color" content="#1e5eff">
   <style>
-    :root{--blue1:#1e6bff;--blue2:#1657ff;--card:#fff;--bg:#f3f6fb;--text:#0f172a;--muted:#64748b;--shadow:0 10px 30px rgba(15,23,42,.12);--radius:18px}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .hero{position:relative;background:linear-gradient(135deg,var(--blue1),var(--blue2));color:#fff;padding:42px 24px 56px;overflow:hidden}
-    .hero::before,.hero::after{content:"";position:absolute;width:520px;height:520px;border-radius:999px;background:rgba(255,255,255,.10)}
-    .hero::before{left:-220px;top:-220px}
-    .hero::after{right:-220px;top:-140px}
-    .hero-inner{max-width:1100px;margin:0 auto;position:relative}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
-    .actions{display:flex;gap:10px;align-items:center}
-    .btn{border:none;cursor:pointer;border-radius:999px;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;transition:.15s transform,.15s opacity,.15s box-shadow;box-shadow:0 8px 18px rgba(0,0,0,.12);user-select:none}
-    .btn:hover{transform:translateY(-1px);opacity:.95}
-    .btn:active{transform:translateY(0px);opacity:.9}
-    .btn-ghost{background:rgba(255,255,255,.15);color:#fff;box-shadow:none;border:1px solid rgba(255,255,255,.25)}
-    .btn-danger{background:#ff4d4f;color:#fff}
-    .title{font-size:44px;font-weight:900;margin:0 0 10px;line-height:1.1}
-    .subtitle{margin:0;color:rgba(255,255,255,.88);font-size:16px;line-height:1.7;max-width:720px}
-    .wrap{max-width:1100px;margin:-40px auto 36px;padding:0 18px}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+    :root{
+      --blue:#1e5eff;
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --shadow:0 14px 36px rgba(15,23,42,.10);
+      --r:18px;
+    }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);}
+    header{
+      background:radial-gradient(1200px 400px at 20% 20%, rgba(255,255,255,.20), transparent 55%),
+                 radial-gradient(900px 380px at 85% 30%, rgba(255,255,255,.16), transparent 55%),
+                 linear-gradient(135deg,#1e5eff,#0ea5e9);
+      padding:26px 18px 58px;
+      color:#fff;
+      position:relative;
+    }
+    .wrap{max-width:1100px;margin:0 auto;}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .topLeft a{color:#fff;text-decoration:none;font-weight:800;opacity:.95}
+    .topLeft a:hover{opacity:1;text-decoration:underline}
+    .topRight{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .chip{
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.25);
+      color:#fff;
+      border-radius:999px;
+      padding:10px 14px;
+      display:flex;gap:8px;align-items:center;
+      backdrop-filter: blur(10px);
+      font-weight:800;
+    }
+    .btn{
+      appearance:none;border:0;cursor:pointer;
+      border-radius:999px;padding:10px 14px;
+      font-weight:900;
+      display:flex;gap:8px;align-items:center;
+    }
+    .btnLight{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff}
+    .btnDanger{background:#ff4d4f;color:#fff}
+    .btnDanger:hover{filter:brightness(.95)}
+    header h1{margin:16px 0 6px;font-size:44px;letter-spacing:.5px}
+    header p{margin:0;opacity:.92}
+
+    main{max-width:1100px;margin:-36px auto 40px;padding:0 18px;}
+    .panel{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;}
+    .panel h2{margin:0 0 2px;font-size:22px}
+    .panel .sub{color:var(--muted);margin:0 0 14px;font-size:13px}
+
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    @media (max-width:860px){.title{font-size:34px}.grid{grid-template-columns:1fr}}
-    .tile{display:flex;gap:14px;padding:16px;border-radius:16px;border:1px solid #e7eefb;text-decoration:none;color:inherit;background:#fff;transition:.15s transform,.15s box-shadow}
-    .tile:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(15,23,42,.10)}
-    .icon{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#eaf2ff,#fff);display:flex;align-items:center;justify-content:center;border:1px solid #e7eefb;font-size:20px}
-    .tile h3{margin:0 0 4px;font-size:16px;font-weight:900}
-    .tile p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
-    .userline{margin-top:14px;font-size:12px;color:rgba(255,255,255,.85)}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);margin-left:8px;font-weight:700}
+    @media (max-width:860px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:#fff;border:1px solid #e8eef7;border-radius:16px;
+      padding:16px;display:flex;gap:14px;align-items:flex-start;
+      box-shadow:0 10px 24px rgba(15,23,42,.06);
+      transition:transform .08s ease, box-shadow .12s ease;
+      cursor:pointer;
+      text-decoration:none;
+      color:inherit;
+    }
+    .card:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(15,23,42,.10)}
+    .icon{
+      width:44px;height:44px;border-radius:14px;
+      background:linear-gradient(135deg,#e0f2fe,#eef2ff);
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid #e6eef9;
+      flex:0 0 auto;
+    }
+    .title{font-weight:900;font-size:18px;margin:0}
+    .desc{margin:6px 0 0;color:var(--muted);line-height:1.55}
+
+    .hidden{display:none!important}
   </style>
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
+  <header>
+    <div class="wrap">
       <div class="topbar">
-        <div style="font-weight:800;opacity:.9">メニュー</div>
-        <div class="actions">
-          <button id="btnAccount" class="btn btn-ghost" type="button">👤 アカウント</button>
-          <button id="btnLogout" class="btn btn-danger" type="button">⏻ Logout</button>
+        <div class="topLeft">
+          <a href="/index.html">← メニュー</a>
+        </div>
+        <div class="topRight">
+          <div id="chipUser" class="chip">未ログイン</div>
+          <button id="btnAccount" class="btn btnLight" type="button">👤 アカウント</button>
+          <button id="btnLogout" class="btn btnDanger" type="button">⏻ Logout</button>
         </div>
       </div>
 
-      <h1 class="title">3行アプリ開発プロジェクト</h1>
-      <p class="subtitle">授業内容を「3行」で振り返る学習支援アプリ</p>
-      <div class="userline" id="userLine">ログイン確認中...</div>
+      <h1>3行アプリ開発プロジェクト</h1>
+      <p>授業内容を「3行」で振り返る学習支援アプリ</p>
     </div>
   </header>
 
-  <main class="wrap">
-    <section class="card">
+  <main>
+    <div class="panel">
+      <h2>メニュー</h2>
+      <p class="sub">使いたい機能を選んでください</p>
+
       <div class="grid">
-        <a class="tile" href="/posts.html"><div class="icon">📝</div><div><h3>3行投稿</h3><p>授業の要点を投稿。先生のいいね・コメントも。</p></div></a>
-        <a class="tile" href="/questions.html"><div class="icon">💬</div><div><h3>質問掲示板</h3><p>疑問を投稿し、学び合う。</p></div></a>
-        <a class="tile" href="/quizzes.html"><div class="icon">🧠</div><div><h3>クイズ</h3><p>思い出しクイズで復習。</p></div></a>
-        <a class="tile" href="/reminders.html"><div class="icon">⏰</div><div><h3>復習リマインダー</h3><p>期限が来た復習を確認。</p></div></a>
-        <a class="tile" href="/ranking.html"><div class="icon">🏆</div><div><h3>ランキング</h3><p>貢献度を表示。</p></div></a>
-        <a class="tile" href="/settings.html"><div class="icon">⚙️</div><div><h3>設定</h3><p>表示・動作の設定。</p></div></a>
+        <a class="card" href="/posts">
+          <div class="icon">📝</div>
+          <div>
+            <p class="title">3行投稿</p>
+            <p class="desc">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</p>
+          </div>
+        </a>
+
+        <a class="card" href="/questions">
+          <div class="icon">💬</div>
+          <div>
+            <p class="title">質問掲示板</p>
+            <p class="desc">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</p>
+          </div>
+        </a>
+
+        <a class="card" href="/quizzes">
+          <div class="icon">🧠</div>
+          <div>
+            <p class="title">クイズ</p>
+            <p class="desc">投稿内容から「思い出しクイズ」を表示。復習に使えます。</p>
+          </div>
+        </a>
+
+        <a class="card" href="/reminders">
+          <div class="icon">⏰</div>
+          <div>
+            <p class="title">復習リマインダー</p>
+            <p class="desc">授業後の復習を習慣化。期限が来た内容を確認できます。</p>
+          </div>
+        </a>
+
+        <a class="card" href="/ranking">
+          <div class="icon">🏆</div>
+          <div>
+            <p class="title">ランキング</p>
+            <p class="desc">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</p>
+          </div>
+        </a>
+
+        <a class="card" href="/settings">
+          <div class="icon">⚙️</div>
+          <div>
+            <p class="title">設定</p>
+            <p class="desc">表示や動作の設定（ランキング非表示など）。</p>
+          </div>
+        </a>
       </div>
-    </section>
+    </div>
   </main>
 
   <script>
-    async function fetchMe() {
-      const r = await fetch("/api/auth/me?ts=" + Date.now(), {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Accept": "application/json" },
-      });
-      return await r.json().catch(() => null);
+    const $ = (id)=>document.getElementById(id);
+
+    async function api(path, opt={}) {
+      const res = await fetch(path, { cache:"no-store", credentials:"include", ...opt });
+      const json = await res.json().catch(()=>null);
+      return { res, json };
     }
 
-    function gotoLogin() {
-      const next = encodeURIComponent(location.pathname || "/index.html");
-      location.replace("/login.html?next=" + next);
-    }
-
-    async function doLogoutHard() {
-      // 先 POST（如果后端支持），失败就 fallback GET（你之前截图证明 GET 可用）
-      try {
-        const r = await fetch("/api/auth/logout?ts=" + Date.now(), {
-          method: "POST",
-          credentials: "include",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: "{}",
-        });
-        if (!r.ok) throw new Error("POST logout failed");
-      } catch (e) {
-        try {
-          await fetch("/api/auth/logout?ts=" + Date.now(), {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-            headers: { "Accept": "application/json" },
-          });
-        } catch {}
-      }
-
-      // 清理前端缓存（不强制，但能减少你遇到的“换账号不生效”）
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-        if (window.caches && caches.keys) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(k => caches.delete(k)));
-        }
-      } catch {}
-    }
-
-    async function initAuthGate() {
-      const me = await fetchMe();
-      if (!me || !me.ok || !me.user) {
-        gotoLogin();
+    async function loadMeOrRedirect() {
+      const r = await api("/api/auth/me");
+      if (!r.json || !r.json.ok || !r.json.user) {
+        location.replace("/login");
         return;
       }
-
-      const u = me.user;
-      const userLine = document.getElementById("userLine");
-      userLine.textContent = `ログイン: ${u.display_name} (${u.username})`;
-      const roleBadge = document.createElement("span");
-      roleBadge.className = "badge";
-      roleBadge.textContent = "role=" + u.role;
-      userLine.appendChild(roleBadge);
-
-      document.getElementById("btnAccount").onclick = () => location.href = "/account.html";
-
-      document.getElementById("btnLogout").onclick = async () => {
-        await doLogoutHard();
-        // 登出后，明确回登录页（而不是 /，避免被 _redirects 影响你调试）
-        location.replace("/login.html");
-      };
+      const u = r.json.user;
+      $("chipUser").textContent = `ログイン：${u.display_name}（${u.username}） role=${u.role}`;
     }
 
-    initAuthGate();
+    async function doLogout() {
+      try{
+        await api("/api/auth/logout", { method:"POST" });
+      }catch(_){}
+      location.replace("/login");
+    }
+
+    $("btnAccount").addEventListener("click", ()=>location.href="/account");
+    $("btnLogout").addEventListener("click", doLogout);
+
+    loadMeOrRedirect();
   </script>
 </body>
 </html>

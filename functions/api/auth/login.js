@@ -1,121 +1,100 @@
 // functions/api/auth/login.js
+import { corsPreflight } from "../../_lib/auth.js";
+
+function buildCorsHeaders(request) {
+  const origin = request.headers.get("Origin");
+  const h = {
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+  if (origin) {
+    h["Access-Control-Allow-Origin"] = origin;
+    h["Access-Control-Allow-Credentials"] = "true";
+    h["Vary"] = "Origin";
+  } else {
+    h["Access-Control-Allow-Origin"] = "*";
+  }
+  return h;
+}
+
+// 简单 hash（示例保持你现有风格：token 自己生成，存 DB；这里不动你的密码体系）
+function randToken(len = 32) {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let s = "";
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
-
   if (request.method === "OPTIONS") return corsPreflight();
-  const headers = corsHeaders();
+  const headers = buildCorsHeaders(request);
 
+  let body;
   try {
-    if (!env.DB) {
-      return json({ ok: false, error: "DB binding missing" }, 500, headers);
-    }
-
-    if (request.method !== "POST") {
-      return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
-    }
-
-    const body = await safeJson(request);
-    if (!body) {
-      return json({ ok: false, error: "Invalid JSON body" }, 400, headers);
-    }
-
-    const username = String(body.username || "").trim();
-    const password = String(body.password || "").trim();
-
-    if (!username || !password) {
-      return json({ ok: false, error: "Missing username or password" }, 400, headers);
-    }
-
-    // 1) 查用户
-    const user = await env.DB.prepare(`
-      SELECT id, username, display_name, role, password_text, is_active
-      FROM users
-      WHERE username = ?
-      LIMIT 1
-    `).bind(username).first();
-
-    if (!user) {
-      return json({ ok: false, error: "Invalid credentials" }, 401, headers);
-    }
-
-    if (user.is_active !== 1) {
-      return json({ ok: false, error: "User is disabled" }, 403, headers);
-    }
-
-    // 2) 明文密码对比（路线 A）
-    if (user.password_text !== password) {
-      return json({ ok: false, error: "Invalid credentials" }, 401, headers);
-    }
-
-    // 3) 创建 session
-    const token =
-      crypto.randomUUID().replace(/-/g, "") +
-      crypto.randomUUID().replace(/-/g, "");
-
-    const now = new Date();
-    const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const expiresAt = expires.toISOString();
-
-    await env.DB.prepare(`
-      INSERT INTO sessions (token, user_id, expires_at)
-      VALUES (?, ?, ?)
-    `).bind(token, user.id, expiresAt).run();
-
-    // 4) 设置 Cookie（全路径）
-    const cookie =
-      `session=${token}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${7 * 24 * 60 * 60}`;
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name,
-          role: user.role,
-        }
-      }),
-      {
-        status: 200,
-        headers: {
-          ...headers,
-          "Content-Type": "application/json; charset=utf-8",
-          "Set-Cookie": cookie,
-        },
-      }
-    );
-
-  } catch (e) {
-    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
-  }
-}
-
-/* ===== helpers ===== */
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-}
-
-function corsPreflight() {
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
-
-function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
-  });
-}
-
-async function safeJson(req) {
-  try {
-    return await req.json();
+    body = await request.json();
   } catch {
-    return null;
+    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON" }), {
+      status: 400,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
   }
+
+  const username = String(body?.username || "").trim();
+  const password = String(body?.password || "").trim();
+
+  if (!username || !password) {
+    return new Response(JSON.stringify({ ok: false, error: "Missing username/password" }), {
+      status: 400,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
+  }
+
+  // 你现在已经走 password_text 方案：这里按 password_text 校验（如你项目已改成这样）
+  const u = await env.DB.prepare(
+    `SELECT id, username, display_name, role, is_active, password_text FROM users WHERE username = ?`
+  ).bind(username).first();
+
+  if (!u || u.is_active !== 1 || u.password_text !== password) {
+    return new Response(JSON.stringify({ ok: false, error: "Invalid credentials" }), {
+      status: 401,
+      headers: {
+        ...headers,
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  // 生成 session token 并存 DB
+  const token = randToken(48);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(); // 30天
+
+  await env.DB.prepare(
+    `INSERT INTO sessions(token, user_id, expires_at) VALUES(?, ?, ?)`
+  ).bind(token, u.id, expiresAt).run();
+
+  // Set-Cookie（与 logout 属性保持一致）
+  const cookie = [
+    `session=${encodeURIComponent(token)}`,
+    `Path=/`,
+    `HttpOnly`,
+    `Secure`,
+    `SameSite=Lax`,
+    `Max-Age=${60 * 60 * 24 * 30}`,
+  ].join("; ");
+
+  return new Response(JSON.stringify({
+    ok: true,
+    user: { id: u.id, username: u.username, display_name: u.display_name, role: u.role }
+  }), {
+    status: 200,
+    headers: {
+      ...headers,
+      "Content-Type": "application/json; charset=utf-8",
+      "Set-Cookie": cookie,
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma": "no-cache",
+    },
+  });
 }

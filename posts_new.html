@@ -70,13 +70,18 @@
 
 <script>
 async function api(path,opt={}){
-  const res=await fetch(path,opt);
+  const res=await fetch(path,{
+    credentials:"include",
+    cache:"no-store",
+    ...opt
+  });
   const text=await res.text();
   let data; try{data=JSON.parse(text)}catch{data=text}
   if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
   if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
   return data;
 }
+
 let ME=null;
 async function loadMe(){
   const r = await api("/api/auth/me");

@@ -1,6 +1,5 @@
 export async function onRequest(context) {
   const { request, env } = context;
-
   if (request.method === "OPTIONS") return corsPreflight();
   const headers = corsHeaders();
 
@@ -8,46 +7,34 @@ export async function onRequest(context) {
     if (!env.DB) return json({ ok: false, error: "DB binding missing" }, 500, headers);
     if (request.method !== "GET") return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
 
-    const token = readCookie(request.headers.get("Cookie") || "", "session");
-    if (!token) return json({ ok: false, error: "Not logged in" }, 401, headers);
+    const token = readCookie(request.headers.get("Cookie") || "", "session_token");
+    if (!token) return json({ ok: true, user: null }, 200, headers);
 
-    const sess = await env.DB.prepare(`
-      SELECT token, user_id, expires_at
-      FROM sessions
-      WHERE token = ?
+    const row = await env.DB.prepare(`
+      SELECT u.id, u.username, u.display_name, u.role, s.expires_at
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.token = ?
     `).bind(token).first();
 
-    if (!sess) return json({ ok: false, error: "Not logged in" }, 401, headers);
+    if (!row) return json({ ok: true, user: null }, 200, headers);
 
-    const nowIso = new Date().toISOString();
-    if (String(sess.expires_at) <= nowIso) {
-      try { await env.DB.prepare(`DELETE FROM sessions WHERE token = ?`).bind(token).run(); } catch {}
-      return json({ ok: false, error: "Session expired" }, 401, headers);
+    // expire check (ISO string compare is safe with toISOString format)
+    if (String(row.expires_at) <= new Date().toISOString()) {
+      await env.DB.prepare(`DELETE FROM sessions WHERE token=?`).bind(token).run();
+      return json({ ok: true, user: null }, 200, headers);
     }
 
-    const user = await env.DB.prepare(`
-      SELECT id, username, display_name, role
-      FROM users
-      WHERE id = ?
-    `).bind(sess.user_id).first();
-
-    if (!user) return json({ ok: false, error: "Not logged in" }, 401, headers);
-
-    return json({ ok: true, user }, 200, headers);
+    return json({ ok: true, user: { id: row.id, username: row.username, display_name: row.display_name, role: row.role } }, 200, headers);
   } catch (e) {
     return json({ ok: false, error: String(e?.message || e) }, 500, headers);
   }
 }
 
-function readCookie(cookieHeader, key) {
-  const parts = cookieHeader.split(";").map(s => s.trim());
-  for (const p of parts) {
-    if (p.startsWith(key + "=")) return decodeURIComponent(p.slice(key.length + 1));
-  }
-  return "";
+function readCookie(cookie, key) {
+  const m = cookie.match(new RegExp(`(?:^|;\\s*)${key}=([^;]+)`));
+  return m ? m[1] : "";
 }
-
-/* helpers */
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -55,12 +42,7 @@ function corsHeaders() {
     "Access-Control-Allow-Headers": "Content-Type",
   };
 }
-function corsPreflight() {
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
+function corsPreflight() { return new Response(null, { status: 204, headers: corsHeaders() }); }
 function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
-  });
+  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...headers } });
 }

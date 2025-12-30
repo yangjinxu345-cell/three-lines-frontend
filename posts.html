@@ -1,170 +1,290 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>3行投稿</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3行投稿（一覧）</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   Roboto, "Helvetica Neue", Arial;
-      background: #f5f7fb;
-      margin: 0;
-      padding: 24px;
+    :root{
+      --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+      --pri:#2563eb; --pri2:#1d4ed8; --chip:#eef2ff;
+      --shadow:0 10px 30px rgba(2,6,23,.08);
+      --r:18px;
     }
-
-    h1 { margin-bottom: 12px; }
-
-    .card {
-      background: #fff;
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 6px 20px rgba(0,0,0,.08);
-    }
-
-    label {
-      display: block;
-      margin-top: 14px;
-      font-weight: 700;
-      color: #374151;
-    }
-
-    .line-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 16px;
-      font-weight: 700;
-      color: #1e40af;
-      background: #eef2ff;
-      padding: 6px 12px;
-      border-radius: 999px;
-      width: fit-content;
-      font-size: 14px;
-    }
-
-    input, textarea, button {
-      width: 100%;
-      margin-top: 8px;
-      padding: 10px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    button {
-      margin-top: 18px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 700;
-      letter-spacing: .02em;
-    }
-
-    button:hover {
-      filter: brightness(1.05);
-    }
-
-    .nav { margin-bottom: 16px; }
-    .nav a {
-      text-decoration: none;
-      color: #2563eb;
-      font-weight: 600;
-    }
-
-    pre {
-      background: #111;
-      color: #0f0;
-      padding: 10px;
-      font-size: 12px;
-      border-radius: 10px;
-      margin-top: 12px;
-    }
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;color:var(--text)}
+    header{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    a{color:#fff;text-decoration:none;font-weight:800}
+    h1{margin:8px 0 0;font-size:26px}
+    main .wrap{padding-top:14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .btn{border:0;border-radius:14px;padding:10px 14px;font-weight:900;cursor:pointer}
+    .btn.primary{background:var(--pri);color:#fff}
+    .btn.ghost{background:#eef2ff;color:#1e40af}
+    .btn.gray{background:#475569;color:#fff}
+    .muted{color:var(--muted);font-size:13px}
+    .list{display:flex;flex-direction:column;gap:12px}
+    .post{padding:14px;border-radius:16px;border:1px solid var(--border);background:#fff}
+    .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:#334155;font-size:13px}
+    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0}
+    .topic{margin-top:10px;font-weight:900}
+    ol{margin:10px 0 0 20px}
+    li{margin:6px 0;line-height:1.55}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+    .count{display:inline-flex;gap:6px;align-items:center;padding:7px 10px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:800;font-size:13px}
+    .hr{height:1px;background:#eef2f7;margin:12px 0}
+    .comments{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#fbfdff;border:1px solid #e5e7eb}
+    textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;min-height:70px}
+    textarea:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+    .inline{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .err{color:#b91c1c;font-size:13px}
   </style>
 </head>
-
 <body>
+<header>
+  <div class="wrap top">
+    <div>
+      <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+      <h1>3行投稿（一覧）</h1>
+      <div class="muted" id="me">ログイン情報：読み込み中…</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn ghost" id="btnRefresh">更新</button>
+      <button class="btn primary" id="btnNew">＋ 新規投稿</button>
+    </div>
+  </div>
+</header>
 
-<div class="nav">
-  <a href="index.html">← 戻る（メニュー）</a>
-</div>
-
-<h1>3行投稿</h1>
-
-<div class="card">
-  <h2>新しい投稿</h2>
-
-  <label>名前</label>
-  <input id="name" placeholder="例：楊旻" />
-
-  <label>クラス</label>
-  <input id="class_name" placeholder="例：ITE2" />
-
-  <label>授業日</label>
-  <input id="lesson_date" type="date" />
-
-  <label>授業名 / テーマ</label>
-  <input id="topic" placeholder="例：SQL 外部結合" />
-
-  <div class="line-label">📝 ポイント①</div>
-  <textarea id="line1" placeholder="今日学んだこと（1つ目）"></textarea>
-
-  <div class="line-label">📝 ポイント②</div>
-  <textarea id="line2" placeholder="今日学んだこと（2つ目）"></textarea>
-
-  <div class="line-label">📝 ポイント③</div>
-  <textarea id="line3" placeholder="今日学んだこと（3つ目）"></textarea>
-
-  <button id="submitBtn">投稿する</button>
-
-  <pre id="result"></pre>
-</div>
+<main>
+  <div class="wrap">
+    <div class="card">
+      <div class="toolbar">
+        <div class="muted" id="status">読み込み中…</div>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+</main>
 
 <script>
-document.getElementById("lesson_date").value =
-  new Date().toISOString().slice(0, 10);
+/* ---------- helpers ---------- */
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function fmtCount(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+async function api(path,opt={}){
+  const res=await fetch(path,opt);
+  const text=await res.text();
+  let data; try{data=JSON.parse(text)}catch{data=text}
+  if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+  if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
+  return data;
+}
 
-document.getElementById("submitBtn").addEventListener("click", async () => {
-  const body = {
-    name: document.getElementById("name").value.trim(),
-    class_name: document.getElementById("class_name").value.trim(),
-    lesson_date: document.getElementById("lesson_date").value,
-    topic: document.getElementById("topic").value.trim(),
-    line1: document.getElementById("line1").value.trim(),
-    line2: document.getElementById("line2").value.trim(),
-    line3: document.getElementById("line3").value.trim()
+let ME=null;
+function canTeacher(){ return ME && (ME.role==="teacher" || ME.role==="admin"); }
+function canEditPost(p){
+  if(!ME) return false;
+  if(ME.role==="admin") return true;
+  // 归属判断：用 posts.name 与当前登录人的 display_name 对比（你当前表结构下最稳的方案）
+  return String(p.name||"") === String(ME.display_name||"");
+}
+
+/* ---------- auth me ---------- */
+// 这里默认你的后端有 /api/auth/me
+async function loadMe(){
+  try{
+    const r = await api("/api/auth/me");
+    // 兼容 {ok:true,user:{...}} 或 {ok:true,item:{...}}
+    const u = r.user || r.item || r.me || r;
+    ME = u;
+    document.getElementById("me").textContent = `ログイン：${u.display_name}（${u.role}）`;
+  }catch(e){
+    document.getElementById("me").textContent = "未ログイン（ログインしてください）";
+    ME = null;
+  }
+}
+
+/* ---------- render ---------- */
+function renderPost(p){
+  const div=document.createElement("div");
+  div.className="post";
+  div.dataset.id = String(p.id);
+
+  const likeCount = fmtCount(p.like_count ?? 0);
+  const commentCount = fmtCount(p.comment_count ?? 0);
+
+  const showEdit = canEditPost(p);
+  const teacher = canTeacher();
+
+  div.innerHTML = `
+    <div class="meta">
+      <span class="badge">👤 ${esc(p.name||"?")}</span>
+      <span class="badge">🏫 ${esc(p.class_name||"-")}</span>
+      <span class="badge">📅 ${esc(p.lesson_date||"-")}</span>
+      <span class="badge">🕒 ${esc(p.created_at||"-")}</span>
+    </div>
+
+    <div class="topic">${esc(p.topic||"")}</div>
+
+    <ol>
+      ${(p.line1||"").trim()?`<li>${esc(p.line1)}</li>`:""}
+      ${(p.line2||"").trim()?`<li>${esc(p.line2)}</li>`:""}
+      ${(p.line3||"").trim()?`<li>${esc(p.line3)}</li>`:""}
+    </ol>
+
+    <div class="actions">
+      <span class="count" title="いいね数">👍 <span class="likeCount">${likeCount}</span></span>
+      <span class="count" title="コメント数">💬 <span class="commentCount">${commentCount}</span></span>
+
+      <button class="btn ghost btnToggle">コメント</button>
+
+      ${teacher ? `<button class="btn primary btnLike">いいね</button>` : ``}
+      ${teacher ? `<button class="btn gray btnUnlike">取消</button>` : ``}
+
+      ${showEdit ? `<button class="btn gray btnEdit">修正</button>` : ``}
+
+      <span class="muted" style="margin-left:auto">${p.last_commented_at ? ("最終コメント: "+esc(p.last_commented_at)) : ""}</span>
+    </div>
+
+    <div class="comments">
+      <div class="muted cstatus">読み込み中…</div>
+      <div class="clist"></div>
+
+      ${teacher ? `
+        <div class="hr"></div>
+        <div class="muted">教員コメントを追加</div>
+        <textarea class="cbody" placeholder="先生のフィードバックを書いてください"></textarea>
+        <div class="inline">
+          <button class="btn primary btnAdd">コメント投稿</button>
+        </div>
+      ` : ``}
+
+      <div class="err cerr" style="display:none"></div>
+    </div>
+  `;
+
+  wire(div, p);
+  return div;
+}
+
+function renderCommentItem(c){
+  return `
+    <div style="padding:10px 0;border-top:1px solid #eef2f7">
+      <div class="muted" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>👩‍🏫 ${esc(c.teacher_name||"?")} ｜ 🕒 ${esc(c.created_at||"-")}${c.updated_at ? (" ｜ ✏️ "+esc(c.updated_at)) : ""}</div>
+      </div>
+      <div style="white-space:pre-wrap;line-height:1.55;margin-top:6px">${esc(c.body||"")}</div>
+    </div>
+  `;
+}
+
+/* ---------- actions ---------- */
+function wire(div,p){
+  const id = Number(p.id);
+
+  const btnNew = document.getElementById("btnNew");
+  btnNew.onclick = () => location.href = "/posts_new.html";
+
+  const btnEdit = div.querySelector(".btnEdit");
+  if(btnEdit){
+    btnEdit.onclick = () => location.href = `/posts_modify.html?id=${encodeURIComponent(id)}`;
+  }
+
+  const box = div.querySelector(".comments");
+  const btnToggle = div.querySelector(".btnToggle");
+  const cstatus = div.querySelector(".cstatus");
+  const clist = div.querySelector(".clist");
+  const cerr = div.querySelector(".cerr");
+
+  btnToggle.onclick = async () => {
+    const shown = box.style.display !== "none";
+    if(shown){ box.style.display="none"; return; }
+    box.style.display="";
+    cerr.style.display="none"; cerr.textContent="";
+    cstatus.textContent="読み込み中…";
+    clist.innerHTML="";
+    try{
+      const data = await api(`/api/posts/${id}/comments`);
+      const items = data.items || data.comments || [];
+      cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
+      clist.innerHTML = items.map(renderCommentItem).join("");
+    }catch(e){
+      cstatus.textContent="コメント取得エラー";
+      cerr.style.display=""; cerr.textContent=String(e.message||e);
+    }
   };
 
-  if (!body.line1 && !body.line2 && !body.line3) {
-    alert("ポイントは1行以上入力してください");
-    return;
+  const likeCountEl = div.querySelector(".likeCount");
+
+  const btnLike = div.querySelector(".btnLike");
+  if(btnLike){
+    btnLike.onclick = async () => {
+      try{
+        const r = await api(`/api/posts/${id}/like`, { method:"POST" });
+        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
+      }catch(e){
+        alert(String(e.message||e));
+      }
+    };
   }
 
-  const out = document.getElementById("result");
-  out.textContent = "送信中…";
-
-  try {
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    const json = await res.json();
-    out.textContent = JSON.stringify(json, null, 2);
-  } catch (e) {
-    out.textContent = String(e);
+  const btnUnlike = div.querySelector(".btnUnlike");
+  if(btnUnlike){
+    btnUnlike.onclick = async () => {
+      try{
+        const r = await api(`/api/posts/${id}/like`, { method:"DELETE" });
+        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
+      }catch(e){
+        alert(String(e.message||e));
+      }
+    };
   }
-});
+
+  const btnAdd = div.querySelector(".btnAdd");
+  if(btnAdd){
+    btnAdd.onclick = async () => {
+      const ta = div.querySelector(".cbody");
+      const body = (ta.value||"").trim();
+      if(!body){ alert("コメント本文が空です"); return; }
+      try{
+        await api(`/api/posts/${id}/comments`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ body })
+        });
+        ta.value="";
+        // reload comments quickly
+        btnToggle.click();
+        btnToggle.click();
+      }catch(e){
+        alert(String(e.message||e));
+      }
+    };
+  }
+}
+
+/* ---------- load list ---------- */
+async function refresh(){
+  document.getElementById("status").textContent="読み込み中…";
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  try{
+    const data = await api("/api/posts?limit=50");
+    const items = data.items || [];
+    document.getElementById("status").textContent = `件数：${items.length}`;
+    items.forEach(p=>list.appendChild(renderPost(p)));
+  }catch(e){
+    document.getElementById("status").textContent="エラー: "+String(e.message||e);
+  }
+}
+
+document.getElementById("btnRefresh").onclick = refresh;
+
+(async () => {
+  await loadMe();
+  await refresh();
+})();
 </script>
-
 </body>
 </html>

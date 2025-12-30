@@ -4,124 +4,115 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ログイン</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1f5eff" />
+
   <style>
-    :root{--blue:#1e5eff;--bg:#f5f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);}
-    header{background:linear-gradient(135deg,#1e5eff,#0ea5e9);padding:28px 18px;color:#fff;}
-    header h1{margin:0;font-size:28px;letter-spacing:.5px}
-    header p{margin:6px 0 0;opacity:.9}
-    main{max-width:860px;margin:-28px auto 32px;padding:0 18px;}
-    .card{background:var(--card);border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,.08);padding:22px;}
-    .row{display:flex;gap:14px;flex-wrap:wrap}
-    .field{flex:1;min-width:240px}
-    label{display:block;font-weight:700;margin:10px 0 8px}
-    input{width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
-    input:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
-    .btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
-    .btnPrimary{background:var(--blue);color:#fff}
-    .btnPrimary:hover{filter:brightness(.95)}
-    .hint{color:var(--muted);font-size:13px;margin-top:6px}
-    .out{margin-top:14px;color:#b91c1c;font-weight:700;white-space:pre-wrap}
-    .topbar{display:flex;justify-content:flex-end;margin-bottom:10px}
-    .link{color:#fff;text-decoration:none;font-weight:800;opacity:.95}
-    .link:hover{opacity:1;text-decoration:underline}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#f5f7fb}
+    .hero{background:linear-gradient(135deg,#1f5eff,#2b7cff);color:#fff;padding:40px 20px}
+    .wrap{max-width:980px;margin:0 auto}
+    .title{font-size:44px;font-weight:800;letter-spacing:.02em;margin:0}
+    .sub{opacity:.9;margin-top:8px}
+    .card{max-width:760px;margin:-28px auto 24px;background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.08);padding:22px}
+    .row{display:grid;grid-template-columns:1fr;gap:14px}
+    label{font-size:13px;color:#334155}
+    input{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none}
+    input:focus{border-color:#1f5eff;box-shadow:0 0 0 3px rgba(31,94,255,.15)}
+    .btns{display:flex;gap:12px;align-items:center;margin-top:10px}
+    button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer}
+    .primary{background:#1f5eff;color:#fff}
+    .primary:hover{filter:brightness(.95)}
+    .ghost{background:#eef2ff;color:#1f5eff}
+    .msg{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0b1220;color:#e5e7eb;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;font-size:12.5px;white-space:pre-wrap}
+    .toplink{color:#fff;text-decoration:none;font-weight:700}
   </style>
 </head>
+
 <body>
-  <header>
-    <div class="topbar">
-      <a class="link" href="/index.html">← メニュー</a>
+  <div class="hero">
+    <div class="wrap">
+      <a class="toplink" href="/">← メニュー</a>
+      <h1 class="title">ログイン</h1>
+      <div class="sub">管理者が発行したアカウントでログインしてください。</div>
     </div>
-    <h1>ログイン</h1>
-    <p>アカウントでログインしてください。</p>
-  </header>
+  </div>
 
-  <main>
-    <div class="card">
-      <div class="row">
-        <div class="field">
-          <label>ユーザー名</label>
-          <input id="username" autocomplete="username" placeholder="例：01252016" />
-          <div class="hint">学籍番号など</div>
-        </div>
-        <div class="field">
-          <label>パスワード</label>
-          <input id="password" type="password" autocomplete="current-password" placeholder="パスワード" />
-          <div class="hint">初期は学籍番号（例：01252016）</div>
-        </div>
+  <div class="card">
+    <form id="form" class="row">
+      <div>
+        <label>ユーザー名（username）</label>
+        <input id="username" autocomplete="username" required />
+      </div>
+      <div>
+        <label>パスワード</label>
+        <input id="password" type="password" autocomplete="current-password" required />
       </div>
 
-      <div style="margin-top:16px;display:flex;gap:10px;align-items:center;">
-        <button id="btnLogin" class="btn btnPrimary">ログイン</button>
-        <span id="status" class="hint"></span>
+      <div class="btns">
+        <button class="primary" type="submit">ログイン</button>
+        <button class="ghost" type="button" id="btnMe">/api/auth/me 確認</button>
       </div>
 
-      <div id="out" class="out"></div>
-    </div>
-  </main>
+      <div id="msg" class="msg" style="display:none"></div>
+    </form>
+  </div>
 
   <script>
-    const $ = (id)=>document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
+    const msg = (t) => { $("msg").style.display="block"; $("msg").textContent = t; };
 
     function getNext() {
       const u = new URL(location.href);
-      const n = u.searchParams.get("next");
-      // 防御：next が /login 系なら無視してメニューへ
-      if (!n) return "/index.html";
-      if (n.startsWith("/login")) return "/index.html";
-      return n;
+      const next = u.searchParams.get("next");
+      return next && next.startsWith("/") ? next : "/index.html";
     }
 
-    async function api(path, opt={}) {
+    async function api(path, opts = {}) {
       const res = await fetch(path, {
-        cache: "no-store",
+        ...opts,
         credentials: "include",
-        headers: { "Content-Type":"application/json", ...(opt.headers||{}) },
-        ...opt,
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
       });
-      const json = await res.json().catch(()=>null);
-      return { res, json };
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      return { res, data };
     }
 
-    async function doLogin() {
-      $("out").textContent = "";
-      $("status").textContent = "ログイン中…";
-      $("btnLogin").disabled = true;
+    $("btnMe").addEventListener("click", async () => {
+      const r = await api("/api/auth/me");
+      msg(`GET /api/auth/me\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
+    });
 
-      try{
-        const username = $("username").value.trim();
-        const password = $("password").value;
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      $("msg").style.display="none";
 
-        if(!username || !password){
-          throw new Error("ユーザー名とパスワードを入力してください。");
-        }
+      const username = $("username").value.trim();
+      const password = $("password").value;
 
-        const r = await api("/api/auth/login", {
-          method:"POST",
-          body: JSON.stringify({ username, password })
-        });
+      const r = await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
 
-        if(!r.res.ok || !r.json || r.json.ok !== true){
-          throw new Error((r.json && r.json.error) ? r.json.error : `HTTP ${r.res.status}`);
-        }
-
-        // ここで /api/auth/me を叩いて「セッションが有効」になったことを確認してから遷移
-        const me = await api("/api/auth/me", { method:"GET" });
-        if(!me.json || !me.json.ok || !me.json.user){
-          throw new Error("ログイン後のセッション確認に失敗しました（/api/auth/me）。");
-        }
-
-        location.replace(getNext());
-      }catch(e){
-        $("out").textContent = String(e?.message || e);
-      }finally{
-        $("status").textContent = "";
-        $("btnLogin").disabled = false;
+      if (!r.res.ok || !r.data || r.data.ok !== true) {
+        msg(`LOGIN FAIL\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
+        return;
       }
-    }
 
-    $("btnLogin").addEventListener("click", doLogin);
-    $("password").addEventListener("keydown", (e)=>{ if(e.key==="Enter") doLogin(); });
+      // 立刻再确认一次 me，确保 cookie/session 真生效
+      const me = await api("/api/auth/me");
+      if (!me.data || !me.data.user) {
+        msg(`ログイン直後の /api/auth/me で user が取れません。\nHTTP ${me.res.status}\n${JSON.stringify(me.data)}`);
+        return;
+      }
+
+      // 强制绕开缓存：加时间戳
+      const next = getNext();
+      const sep = next.includes("?") ? "&" : "?";
+      location.replace(next + sep + "v=" + Date.now());
+    });
   </script>
 </body>
 </html>

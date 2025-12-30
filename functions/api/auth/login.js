@@ -1,100 +1,72 @@
-// functions/api/auth/login.js
-import { corsPreflight } from "../../_lib/auth.js";
+// login.js
+(() => {
+  const $ = (id) => document.getElementById(id);
 
-function buildCorsHeaders(request) {
-  const origin = request.headers.get("Origin");
-  const h = {
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
-  if (origin) {
-    h["Access-Control-Allow-Origin"] = origin;
-    h["Access-Control-Allow-Credentials"] = "true";
-    h["Vary"] = "Origin";
-  } else {
-    h["Access-Control-Allow-Origin"] = "*";
-  }
-  return h;
-}
-
-// 简单 hash（示例保持你现有风格：token 自己生成，存 DB；这里不动你的密码体系）
-function randToken(len = 32) {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let s = "";
-  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return s;
-}
-
-export async function onRequest(context) {
-  const { request, env } = context;
-  if (request.method === "OPTIONS") return corsPreflight();
-  const headers = buildCorsHeaders(request);
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON" }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+  async function apiMe() {
+    const r = await fetch("/api/auth/me", {
+      cache: "no-store",
+      credentials: "include",
     });
+    const j = await r.json();
+    return j && j.ok ? j.user : null;
   }
 
-  const username = String(body?.username || "").trim();
-  const password = String(body?.password || "").trim();
-
-  if (!username || !password) {
-    return new Response(JSON.stringify({ ok: false, error: "Missing username/password" }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+  async function doLogin(username, password) {
+    const r = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+      cache: "no-store",
+      credentials: "include",
     });
+    const j = await r.json().catch(() => null);
+    return { r, j };
   }
 
-  // 你现在已经走 password_text 方案：这里按 password_text 校验（如你项目已改成这样）
-  const u = await env.DB.prepare(
-    `SELECT id, username, display_name, role, is_active, password_text FROM users WHERE username = ?`
-  ).bind(username).first();
-
-  if (!u || u.is_active !== 1 || u.password_text !== password) {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid credentials" }), {
-      status: 401,
-      headers: {
-        ...headers,
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
-    });
+  function getNext() {
+    const sp = new URLSearchParams(location.search);
+    const n = sp.get("next");
+    if (n && n.startsWith("/")) return n;
+    return "/index.html";
   }
 
-  // 生成 session token 并存 DB
-  const token = randToken(48);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(); // 30天
+  // 如果已登录，直接去 index
+  (async () => {
+    try {
+      const user = await apiMe();
+      if (user) location.replace(getNext());
+    } catch {}
+  })();
 
-  await env.DB.prepare(
-    `INSERT INTO sessions(token, user_id, expires_at) VALUES(?, ?, ?)`
-  ).bind(token, u.id, expiresAt).run();
+  // 绑定表单
+  const form = document.querySelector("form");
+  if (!form) return;
 
-  // Set-Cookie（与 logout 属性保持一致）
-  const cookie = [
-    `session=${encodeURIComponent(token)}`,
-    `Path=/`,
-    `HttpOnly`,
-    `Secure`,
-    `SameSite=Lax`,
-    `Max-Age=${60 * 60 * 24 * 30}`,
-  ].join("; ");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("msg");
+    const btn = $("btnLogin") || document.querySelector('button[type="submit"]');
 
-  return new Response(JSON.stringify({
-    ok: true,
-    user: { id: u.id, username: u.username, display_name: u.display_name, role: u.role }
-  }), {
-    status: 200,
-    headers: {
-      ...headers,
-      "Content-Type": "application/json; charset=utf-8",
-      "Set-Cookie": cookie,
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-      "Pragma": "no-cache",
-    },
+    msg && (msg.textContent = "");
+    btn && (btn.disabled = true);
+
+    try {
+      const username = ($("username") || $("u") || document.querySelector('input[name="username"]')).value.trim();
+      const password = ($("password") || $("p") || document.querySelector('input[type="password"]')).value.trim();
+
+      const { r, j } = await doLogin(username, password);
+
+      if (!r.ok || !j || !j.ok) {
+        if (msg) msg.textContent = (j && j.error) ? j.error : `Login failed: ${r.status}`;
+        return;
+      }
+
+      // ✅ 永远不要跳到 "/"，否则会被 _redirects 再送回登录页
+      location.replace(getNext());
+    } catch (err) {
+      if (msg) msg.textContent = String(err);
+    } finally {
+      btn && (btn.disabled = false);
+    }
   });
-}
+})();

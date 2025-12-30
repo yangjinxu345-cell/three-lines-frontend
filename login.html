@@ -4,116 +4,205 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ログイン</title>
-  <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#1f5eff" />
-
   <style>
-    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#f5f7fb}
-    .hero{background:linear-gradient(135deg,#1f5eff,#2b7cff);color:#fff;padding:40px 20px}
+    :root{
+      --bg:#f5f7fb;
+      --blue1:#1e63ff;
+      --blue2:#0b5ed7;
+      --card:#ffffff;
+      --text:#101828;
+      --muted:#667085;
+      --border:#e6e9f2;
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      background:linear-gradient(135deg,var(--blue2),#2f7bff);
+      color:#fff;
+      padding:40px 16px 60px;
+    }
     .wrap{max-width:980px;margin:0 auto}
-    .title{font-size:44px;font-weight:800;letter-spacing:.02em;margin:0}
-    .sub{opacity:.9;margin-top:8px}
-    .card{max-width:760px;margin:-28px auto 24px;background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.08);padding:22px}
+    .top{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:18px;
+    }
+    .back{
+      color:#eaf2ff;text-decoration:none;font-weight:700;
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:12px;
+      background:rgba(255,255,255,.12);
+    }
+    .back:hover{background:rgba(255,255,255,.18)}
+    h1{margin:10px 0 8px;font-size:44px;letter-spacing:1px}
+    .sub{opacity:.92;font-size:14px}
+
+    main{padding:0 16px}
+    .card{
+      max-width:760px;
+      margin:-40px auto 24px;
+      background:var(--card);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.6);
+      padding:24px;
+    }
     .row{display:grid;grid-template-columns:1fr;gap:14px}
-    label{font-size:13px;color:#334155}
-    input{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none}
-    input:focus{border-color:#1f5eff;box-shadow:0 0 0 3px rgba(31,94,255,.15)}
-    .btns{display:flex;gap:12px;align-items:center;margin-top:10px}
-    button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer}
-    .primary{background:#1f5eff;color:#fff}
-    .primary:hover{filter:brightness(.95)}
-    .ghost{background:#eef2ff;color:#1f5eff}
-    .msg{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0b1220;color:#e5e7eb;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;font-size:12.5px;white-space:pre-wrap}
-    .toplink{color:#fff;text-decoration:none;font-weight:700}
+    label{font-weight:800;font-size:13px;color:#344054}
+    input{
+      width:100%;
+      padding:14px 14px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      outline:none;
+      font-size:16px;
+      background:#fff;
+    }
+    input:focus{border-color:#9db8ff;box-shadow:0 0 0 4px rgba(30,99,255,.12)}
+    .actions{
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:12px 16px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:10px;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg,var(--blue1),var(--blue2));
+      color:#fff;
+      box-shadow:0 10px 20px rgba(11,94,215,.22);
+    }
+    .btn.primary:hover{filter:brightness(1.03)}
+    .btn.ghost{
+      background:#f3f7ff;
+      color:#0b5ed7;
+    }
+    .btn.ghost:hover{background:#eaf2ff}
+    .msg{
+      margin-top:12px;
+      font-size:13px;
+      color:var(--muted);
+      min-height:18px;
+      white-space:pre-wrap;
+    }
+    .msg.err{color:#c92a2a}
+    .hint{margin-top:4px;color:#98a2b3;font-size:12px}
+    pre{display:none}
   </style>
 </head>
 
 <body>
-  <div class="hero">
+  <header>
     <div class="wrap">
-      <a class="toplink" href="/">← メニュー</a>
-      <h1 class="title">ログイン</h1>
+      <div class="top">
+        <a class="back" href="/index.html">← メニュー</a>
+      </div>
+      <h1>ログイン</h1>
       <div class="sub">管理者が発行したアカウントでログインしてください。</div>
     </div>
-  </div>
+  </header>
 
-  <div class="card">
-    <form id="form" class="row">
-      <div>
-        <label>ユーザー名（username）</label>
-        <input id="username" autocomplete="username" required />
-      </div>
-      <div>
-        <label>パスワード</label>
-        <input id="password" type="password" autocomplete="current-password" required />
-      </div>
+  <main>
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="u">ユーザー名（username）</label>
+          <input id="u" autocomplete="username" placeholder="例：01252016" />
+          <div class="hint">学籍番号など</div>
+        </div>
+        <div>
+          <label for="p">パスワード</label>
+          <input id="p" type="password" autocomplete="current-password" placeholder="password" />
+        </div>
 
-      <div class="btns">
-        <button class="primary" type="submit">ログイン</button>
-        <button class="ghost" type="button" id="btnMe">/api/auth/me 確認</button>
-      </div>
+        <div class="actions">
+          <button class="btn primary" id="btnLogin">ログイン</button>
+          <button class="btn ghost" id="btnCheck">/api/auth/me 確認</button>
+        </div>
 
-      <div id="msg" class="msg" style="display:none"></div>
-    </form>
-  </div>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>
+  </main>
 
   <script>
-    const $ = (id) => document.getElementById(id);
-    const msg = (t) => { $("msg").style.display="block"; $("msg").textContent = t; };
-
-    function getNext() {
-      const u = new URL(location.href);
-      const next = u.searchParams.get("next");
-      return next && next.startsWith("/") ? next : "/index.html";
-    }
-
-    async function api(path, opts = {}) {
+    async function api(path, options = {}) {
       const res = await fetch(path, {
-        ...opts,
+        ...options,
+        // 关键：必须带 cookie
         credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+        headers: {
+          "Accept": "application/json",
+          ...(options.headers || {})
+        }
       });
+      const text = await res.text();
       let data = null;
-      try { data = await res.json(); } catch (_) {}
-      return { res, data };
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      return { ok: res.ok, status: res.status, data };
     }
 
-    $("btnMe").addEventListener("click", async () => {
-      const r = await api("/api/auth/me");
-      msg(`GET /api/auth/me\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
-    });
+    function setMsg(text, isErr=false){
+      const el = document.getElementById("msg");
+      el.textContent = text || "";
+      el.className = "msg" + (isErr ? " err" : "");
+    }
 
-    $("form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      $("msg").style.display="none";
+    async function doLogin(){
+      setMsg("ログイン中...");
+      const username = document.getElementById("u").value.trim();
+      const password = document.getElementById("p").value;
 
-      const username = $("username").value.trim();
-      const password = $("password").value;
+      if(!username || !password){
+        setMsg("ユーザー名とパスワードを入力してください。", true);
+        return;
+      }
 
       const r = await api("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
       });
 
-      if (!r.res.ok || !r.data || r.data.ok !== true) {
-        msg(`LOGIN FAIL\nHTTP ${r.res.status}\n${JSON.stringify(r.data)}`);
+      if(!r.ok || !r.data || r.data.ok !== true){
+        setMsg(`ログイン失敗：HTTP ${r.status}\n` + JSON.stringify(r.data), true);
         return;
       }
 
-      // 立刻再确认一次 me，确保 cookie/session 真生效
-      const me = await api("/api/auth/me");
-      if (!me.data || !me.data.user) {
-        msg(`ログイン直後の /api/auth/me で user が取れません。\nHTTP ${me.res.status}\n${JSON.stringify(me.data)}`);
+      // 再確認：cookieが効いているか
+      const me = await api("/api/auth/me", { method: "GET" });
+      if(!me.ok || !me.data || me.data.ok !== true || !me.data.user){
+        setMsg("ログインは成功しましたが、セッション確認に失敗しました。キャッシュ/ServiceWorkerの影響の可能性があります。", true);
         return;
       }
 
-      // 强制绕开缓存：加时间戳
-      const next = getNext();
-      const sep = next.includes("?") ? "&" : "?";
-      location.replace(next + sep + "v=" + Date.now());
+      setMsg("ログイン成功。移動します…");
+      // 关键：/ は _redirects で login に飛ばされるので、必ず /index.html へ
+      location.assign("/index.html?v=" + Date.now());
+    }
+
+    async function checkMe(){
+      const r = await api("/api/auth/me");
+      setMsg(JSON.stringify(r.data, null, 2), !r.ok);
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", doLogin);
+    document.getElementById("btnCheck").addEventListener("click", checkMe);
+
+    // Enterキーでログイン
+    document.getElementById("p").addEventListener("keydown", (e)=>{
+      if(e.key === "Enter") doLogin();
     });
   </script>
 </body>
-  
 </html>

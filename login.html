@@ -52,53 +52,57 @@
   </main>
 
   <script>
-    async function api(path,opt={}){
-      const res = await fetch(path, {
-        credentials: "include",   // ✅ 关键：确保 cookie 写入/携带
-        ...opt
+  async function api(path, opt = {}) {
+    const res = await fetch(path, {
+      credentials: "include",
+      ...opt
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = text; }
+    if (!res.ok) throw new Error("HTTP " + res.status + " " + text);
+    if (data && typeof data === "object" && data.ok === false) throw new Error(data.error || "API error");
+    return data;
+  }
+
+  async function login() {
+    const out = document.getElementById("out");
+    out.textContent = "logging in...";
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    try {
+      const r = await api("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
       });
-      const text = await res.text();
-      let data; try{ data = JSON.parse(text);}catch{ data=text; }
-      if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
-      if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
-      return data;
-    }
 
-    async function login(){
-      const out = document.getElementById("out");
-      out.textContent = "logging in...";
+      // 再确认一次 cookie 是否生效
+      const me = await api("/api/auth/me", { method: "GET" });
 
-      try{
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value;
+      out.textContent =
+        "ログイン成功\n\nlogin:\n" + JSON.stringify(r, null, 2) +
+        "\n\nme:\n" + JSON.stringify(me, null, 2);
 
-        const data = await api("/api/auth/login",{
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ username, password })
-        });
-
-        // ✅ 再确认一次：cookie 是否真的生效
-        const me = await api("/api/auth/me", { method: "GET" });
-
-        out.textContent = "ログイン成功\n\nlogin:\n" + JSON.stringify(data, null, 2) +
-                          "\n\nme:\n" + JSON.stringify(me, null, 2);
-
-        if (!me.user) {
-          // 这里就能直接告诉你：后端 cookie 名不一致/未写入
-          throw new Error("ログインは成功したが、/api/auth/me が user=null。Cookie が一致していない可能性が高い。");
-        }
-
-        // ✅ 用 replace 防止返回到 login
-        location.replace("/index.html?ts=" + Date.now());
-      }catch(e){
-        out.textContent = "ログイン失敗: " + String(e?.message||e);
+      if (!me.user) {
+        throw new Error("ログイン成功したのに /api/auth/me が user=null。Cookie が保存されていない。");
       }
-    }
 
-    document.getElementById("btnLogin").addEventListener("click", login);
-    document.getElementById("password").addEventListener("keydown", (e)=>{ if(e.key==="Enter") login(); });
-    document.getElementById("btnToAdmin").addEventListener("click", ()=> location.href="/admin_users.html");
-  </script>
+      // ✅ 强制跳转（用 replace 避免回退回登录页）
+      location.replace("/index.html?ts=" + Date.now());
+    } catch (e) {
+      out.textContent = "ログイン失敗: " + String(e?.message || e);
+      console.error(e);
+    }
+  }
+
+  document.getElementById("btnLogin").addEventListener("click", login);
+  document.getElementById("password").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
+  });
+</script>
+
 </body>
 </html>

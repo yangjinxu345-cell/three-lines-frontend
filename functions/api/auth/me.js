@@ -1,11 +1,12 @@
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
   try {
     const db = env.DB || env.THREE_LINES_DB || env.three_lines_db;
     if (!db) {
       return json({ ok: false, error: "D1 binding not found (DB / THREE_LINES_DB / three_lines_db)" }, 500);
     }
 
-    const cookies = parseCookies(env?.request?.headers?.get("Cookie") || "");
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const cookies = parseCookies(cookieHeader);
     const username = cookies.tl_user ? decodeURIComponent(cookies.tl_user) : null;
 
     if (!username) {
@@ -37,7 +38,7 @@ export async function onRequestGet({ env }) {
   } catch (e) {
     return json({ ok: false, error: String(e?.message || e) }, 500);
   }
-};
+}
 
 function parseCookies(cookieHeader) {
   const out = {};
@@ -57,9 +58,7 @@ function makeCookie(name, value, opts = {}) {
   parts.push(`Path=/`);
   parts.push(`SameSite=Lax`);
   parts.push(`Secure`);
-  // HttpOnly：前端不需要读这个 cookie，只需要浏览器自动带上即可
   parts.push(`HttpOnly`);
-
   if (opts.maxAge !== undefined) parts.push(`Max-Age=${opts.maxAge}`);
   return parts.join("; ");
 }

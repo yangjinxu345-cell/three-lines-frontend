@@ -33,7 +33,7 @@
     header{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;
-      padding:48px 24px 56px;
+      padding:32px 24px 36px; /* ⬅ 瘦身 */
       position:relative;
       overflow:hidden;
     }
@@ -54,12 +54,13 @@
     }
     header h1{
       margin:0;
-      font-size:40px;
+      font-size:32px; /* ⬅ 稍微缩小 */
       letter-spacing:.02em;
     }
     header p{
-      margin:8px 0 0;
+      margin:6px 0 0;
       opacity:.9;
+      font-size:14px;
     }
 
     /* ===== Main ===== */
@@ -68,7 +69,7 @@
       display:flex;
       align-items:flex-start;
       justify-content:center;
-      padding:32px 16px;
+      padding:48px 16px 32px; /* ⬅ 用 padding 控制距离 */
     }
 
     .card{
@@ -77,7 +78,6 @@
       background:var(--card);
       border-radius:22px;
       padding:28px 26px 24px;
-      margin-top:-72px;
       box-shadow:0 18px 40px rgba(2,6,23,.12);
       border:1px solid #e5e7eb;
     }
@@ -208,14 +208,10 @@
       });
 
       const me = await api("/api/auth/me?ts=" + Date.now());
-
-      if (!me.user) {
-        throw new Error("ログイン情報を確認できませんでした");
-      }
+      if (!me.user) throw new Error("ログイン情報を確認できませんでした");
 
       status.textContent = "ログイン成功。移動します…";
       status.classList.add("ok");
-
       location.replace("/index.html?ts=" + Date.now());
     } catch (e) {
       status.textContent = "ログイン失敗: " + e.message;

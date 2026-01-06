@@ -1,12 +1,22 @@
 // functions/api/auth/me.js
 
-function getCookie(request, name) {
-  const cookie = request.headers.get("Cookie") || "";
-  const parts = cookie.split(";").map((v) => v.trim());
-  for (const p of parts) {
-    if (p.startsWith(name + "=")) return decodeURIComponent(p.slice(name.length + 1));
+function json(headers, status, data) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
+function parseCookies(cookieHeader) {
+  const out = {};
+  if (!cookieHeader) return out;
+  const parts = cookieHeader.split(";");
+  for (const part of parts) {
+    const [k, ...rest] = part.trim().split("=");
+    if (!k) continue;
+    out[k] = decodeURIComponent(rest.join("=") || "");
   }
-  return "";
+  return out;
 }
 
 export async function onRequest(context) {
@@ -23,43 +33,59 @@ export async function onRequest(context) {
   }
 
   if (request.method !== "GET") {
-    return new Response(JSON.stringify({ ok: false, error: "Method Not Allowed" }), {
-      status: 405,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 405, { ok: false, error: "Method Not Allowed" });
   }
-
-  const sessionToken = getCookie(request, "session_token");
-  if (!sessionToken) {
-    return new Response(JSON.stringify({ ok: true, user: null }), {
-      status: 200,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
-  }
-
-  // 这里假设你的 DB 结构是：
-  // sessions(session_token, user_id, expires_at)
-  // users(id, username, display_name, role)
-  // expires_at 如果是 ISO 字符串，可直接与 datetime('now') 比较
-  const sql = `
-    SELECT u.id, u.username, u.display_name, u.role
-    FROM sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.session_token = ?
-      AND (s.expires_at IS NULL OR s.expires_at > datetime('now'))
-    LIMIT 1
-  `;
 
   try {
-    const row = await env.DB.prepare(sql).bind(sessionToken).first();
-    return new Response(JSON.stringify({ ok: true, user: row || null }), {
-      status: 200,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const cookies = parseCookies(cookieHeader);
+    const token = cookies.session_token || "";
+
+    if (!token) {
+      return json(headers, 200, { ok: true, user: null });
+    }
+
+    // sessions 里查 token，并确认未过期，然后 join users
+    const row = await env.DB.prepare(
+      `
+      SELECT
+        u.id AS id,
+        u.username AS username,
+        u.display_name AS display_name,
+        u.role AS role,
+        s.expires_at AS expires_at
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.session_token = ?
+      LIMIT 1
+      `
+    )
+      .bind(token)
+      .first();
+
+    if (!row) {
+      return json(headers, 200, { ok: true, user: null });
+    }
+
+    // 过期判断（expires_at 是 ISO 字符串时适用）
+    const exp = row.expires_at ? Date.parse(String(row.expires_at)) : NaN;
+    if (!Number.isNaN(exp) && exp <= Date.now()) {
+      // 过期：删掉这条 session（可选但推荐）
+      await env.DB.prepare(`DELETE FROM sessions WHERE session_token = ?`)
+        .bind(token)
+        .run();
+      return json(headers, 200, { ok: true, user: null });
+    }
+
+    const user = {
+      id: row.id,
+      username: row.username,
+      display_name: row.display_name,
+      role: row.role,
+    };
+
+    return json(headers, 200, { ok: true, user });
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
-      status: 500,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 500, { ok: false, error: e?.message || String(e) });
   }
 }

@@ -10,8 +10,7 @@ function json(headers, status, data) {
 function parseCookies(cookieHeader) {
   const out = {};
   if (!cookieHeader) return out;
-  const parts = cookieHeader.split(";");
-  for (const part of parts) {
+  for (const part of cookieHeader.split(";")) {
     const [k, ...rest] = part.trim().split("=");
     if (!k) continue;
     out[k] = decodeURIComponent(rest.join("=") || "");
@@ -19,8 +18,7 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-function clearSessionCookie() {
-  // 清 cookie
+function clearCookie() {
   return [
     `session_token=`,
     `Path=/`,
@@ -40,36 +38,25 @@ export async function onRequest(context) {
     "Access-Control-Allow-Headers": "Content-Type",
   };
 
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers });
-  }
-
-  if (request.method !== "POST") {
-    return json(headers, 405, { ok: false, error: "Method Not Allowed" });
-  }
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method !== "POST") return json(headers, 405, { ok: false, error: "Method Not Allowed" });
 
   try {
-    const cookieHeader = request.headers.get("Cookie") || "";
-    const cookies = parseCookies(cookieHeader);
+    const cookies = parseCookies(request.headers.get("Cookie") || "");
     const token = cookies.session_token || "";
 
     if (token) {
-      await env.DB.prepare(`DELETE FROM sessions WHERE session_token = ?`)
-        .bind(token)
-        .run();
+      await env.DB.prepare(`DELETE FROM sessions WHERE token = ?`).bind(token).run();
     }
 
-    return new Response(
-      JSON.stringify({ ok: true }),
-      {
-        status: 200,
-        headers: {
-          ...headers,
-          "Content-Type": "application/json; charset=utf-8",
-          "Set-Cookie": clearSessionCookie(),
-        },
-      }
-    );
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: {
+        ...headers,
+        "Content-Type": "application/json; charset=utf-8",
+        "Set-Cookie": clearCookie(),
+      },
+    });
   } catch (e) {
     return json(headers, 500, { ok: false, error: e?.message || String(e) });
   }

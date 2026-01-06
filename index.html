@@ -88,7 +88,7 @@
 
   // 进入页面先确认登录态：没登录就去 /login
   (async () => {
-    const r = await apiGet("/api/auth/me");
+    const r = await apiGet("/api/auth/me?ts=" + Date.now()); // ✅ 加 ts 更稳
     if (!r.ok || !r.data || !r.data.ok || !r.data.user) {
       location.replace("/login?ts=" + Date.now());
       return;

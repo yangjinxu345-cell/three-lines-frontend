@@ -1,98 +1,36 @@
-// functions/api/auth/login.js
-
-function json(headers, status, data) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+export async function onRequestPost({ request, env }) {
+  const headers = new Headers({
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
   });
-}
 
-function generateToken() {
-  if (crypto?.randomUUID) return crypto.randomUUID();
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-}
+  // 读取 cookie（兼容：session / session_token）
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const token = readCookie(cookieHeader, "session") || readCookie(cookieHeader, "session_token");
 
-function makeCookie(token, maxAgeSeconds = 30 * 24 * 60 * 60) {
-  return [
-    `session_token=${encodeURIComponent(token)}`,
-    `Path=/`,
-    `Max-Age=${maxAgeSeconds}`,
-    `HttpOnly`,
-    `Secure`,
-    `SameSite=Lax`,
-  ].join("; ");
-}
-
-export async function onRequest(context) {
-  const { request, env } = context;
-
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
-  if (request.method !== "POST") return json(headers, 405, { ok: false, error: "Method Not Allowed" });
-
-  try {
-    const body = await request.json();
-    const username = String(body.username || "").trim();
-    const password = String(body.password || "");
-
-    if (!username || !password) {
-      return json(headers, 400, { ok: false, error: "用户名或密码为空" });
+  // 1) 删除 sessions 表里的记录（如果 token 不存在也无所谓）
+  if (token) {
+    try {
+      await env.DB.prepare("DELETE FROM sessions WHERE token = ?")
+        .bind(token)
+        .run();
+    } catch (e) {
+      // 忽略 DB 删除失败，仍然继续清 cookie
+      console.warn("logout: failed to delete session", e);
     }
-
-    // ✅ 明文密码校验：users.password_text
-    const user = await env.DB.prepare(`
-      SELECT id, username, display_name, role, password_text, is_active
-      FROM users
-      WHERE username = ?
-      LIMIT 1
-    `).bind(username).first();
-
-    if (!user) return json(headers, 401, { ok: false, error: "用户名或密码错误" });
-    if (user.is_active === 0) return json(headers, 403, { ok: false, error: "账号已停用" });
-
-    const stored = String(user.password_text || "");
-    if (stored !== password) {
-      return json(headers, 401, { ok: false, error: "用户名或密码错误" });
-    }
-
-    // ✅ 写入 sessions(token, user_id, expires_at)
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30天
-
-    await env.DB.prepare(`
-      INSERT INTO sessions (token, user_id, expires_at)
-      VALUES (?, ?, ?)
-    `).bind(token, user.id, expiresAt).run();
-
-    const setCookie = makeCookie(token);
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name,
-          role: user.role,
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          ...headers,
-          "Content-Type": "application/json; charset=utf-8",
-          "Set-Cookie": setCookie,
-        },
-      }
-    );
-  } catch (e) {
-    return json(headers, 500, { ok: false, error: e?.message || String(e) });
   }
+
+  // 2) 清 cookie（两种名字都清掉，避免残留导致切换用户失败）
+  headers.append("Set-Cookie", "session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax");
+  headers.append("Set-Cookie", "session_token=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax");
+
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+}
+
+function readCookie(cookieHeader, name) {
+  const parts = cookieHeader.split(";").map((s) => s.trim());
+  for (const p of parts) {
+    if (p.startsWith(name + "=")) return decodeURIComponent(p.slice(name.length + 1));
+  }
+  return null;
 }

@@ -1,12 +1,34 @@
 // functions/api/auth/logout.js
 
-function getCookie(request, name) {
-  const cookie = request.headers.get("Cookie") || "";
-  const parts = cookie.split(";").map((v) => v.trim());
-  for (const p of parts) {
-    if (p.startsWith(name + "=")) return decodeURIComponent(p.slice(name.length + 1));
+function json(headers, status, data) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
+function parseCookies(cookieHeader) {
+  const out = {};
+  if (!cookieHeader) return out;
+  const parts = cookieHeader.split(";");
+  for (const part of parts) {
+    const [k, ...rest] = part.trim().split("=");
+    if (!k) continue;
+    out[k] = decodeURIComponent(rest.join("=") || "");
   }
-  return "";
+  return out;
+}
+
+function clearSessionCookie() {
+  // 清 cookie
+  return [
+    `session_token=`,
+    `Path=/`,
+    `Max-Age=0`,
+    `HttpOnly`,
+    `Secure`,
+    `SameSite=Lax`,
+  ].join("; ");
 }
 
 export async function onRequest(context) {
@@ -23,34 +45,32 @@ export async function onRequest(context) {
   }
 
   if (request.method !== "POST") {
-    return new Response(JSON.stringify({ ok: false, error: "Method Not Allowed" }), {
-      status: 405,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 405, { ok: false, error: "Method Not Allowed" });
   }
 
-  const sessionToken = getCookie(request, "session_token");
-
   try {
-    if (sessionToken) {
-      await env.DB.prepare(`DELETE FROM sessions WHERE session_token = ?`).bind(sessionToken).run();
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const cookies = parseCookies(cookieHeader);
+    const token = cookies.session_token || "";
+
+    if (token) {
+      await env.DB.prepare(`DELETE FROM sessions WHERE session_token = ?`)
+        .bind(token)
+        .run();
     }
 
-    // 清掉正确的 cookie 名：session_token（并且 Path 必须是 /）
-    const cookie = `session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        ...headers,
-        "Content-Type": "application/json; charset=utf-8",
-        "Set-Cookie": cookie,
-      },
-    });
+    return new Response(
+      JSON.stringify({ ok: true }),
+      {
+        status: 200,
+        headers: {
+          ...headers,
+          "Content-Type": "application/json; charset=utf-8",
+          "Set-Cookie": clearSessionCookie(),
+        },
+      }
+    );
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
-      status: 500,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 500, { ok: false, error: e?.message || String(e) });
   }
 }

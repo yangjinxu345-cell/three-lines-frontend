@@ -34,7 +34,7 @@
     .toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
     .brand h1{margin:18px 0 0;font-size:56px;letter-spacing:.02em}
     .brand p{margin:10px 0 0;opacity:.9}
-    .actions{display:flex;gap:12px;align-items:center;margin-top:8px}
+    .actions{display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap}
     .pill{
       display:inline-flex;gap:10px;align-items:center;
       padding:10px 14px;border-radius:14px;
@@ -81,6 +81,7 @@
     .d{color:var(--muted);margin-top:4px}
     .subttl{margin:0 0 12px;font-weight:1000}
     .loginline{margin-top:10px;color:rgba(255,255,255,.95);font-weight:800}
+    .small{font-size:12px;opacity:.9}
   </style>
 </head>
 <body>
@@ -91,7 +92,8 @@
           <div style="opacity:.95;font-weight:900">← メニュー</div>
           <h1>3行アプリ開発プロジェクト</h1>
           <p>授業内容を「3行」で振り返る学習支援アプリ</p>
-          <div id="loginLine" class="loginline"></div>
+          <div id="loginLine" class="loginline">確認中…</div>
+          <div id="hint" class="small"></div>
         </div>
 
         <div class="actions">
@@ -138,35 +140,55 @@
   </main>
 
   <script>
+    // ✅ 更稳的 API：GET 不强行加 Content-Type；只在需要时加
     async function api(path, opt = {}) {
-      const headers = Object.assign({ "Content-Type": "application/json" }, opt.headers || {});
-      const res = await fetch(path, Object.assign({ credentials: "include", headers }, opt));
+      const method = (opt.method || "GET").toUpperCase();
+      const headers = new Headers(opt.headers || {});
+      if (method !== "GET" && method !== "HEAD") {
+        if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+      }
+
+      const res = await fetch(path, {
+        credentials: "include",
+        ...opt,
+        method,
+        headers
+      });
+
       const text = await res.text();
       let data;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-      if (!res.ok) throw new Error((data && data.error) ? data.error : ("HTTP " + res.status));
+      if (!res.ok) throw new Error((data && data.error) ? data.error : ("HTTP " + res.status + " " + text));
       return data;
     }
 
+    function gotoLogin(reason) {
+      const r = reason ? encodeURIComponent(reason) : "";
+      location.replace("/login.html?from=index&reason=" + r + "&ts=" + Date.now());
+    }
+
     async function ensureLogin() {
-      const me = await api("/api/auth/me", { method: "GET" });
+      const me = await api("/api/auth/me?ts=" + Date.now(), { method: "GET" });
       if (!me || !me.user) {
-        location.href = "/login.html";
+        gotoLogin("not_logged_in");
         return null;
       }
       return me.user;
     }
 
     document.getElementById("btnLogout").addEventListener("click", async () => {
+      const hint = document.getElementById("hint");
+      hint.textContent = "ログアウト中…";
       try {
         await api("/api/auth/logout", { method: "POST", body: "{}" });
       } catch (_) {
-        // 失敗してもログイン画面へ（cookieが消えていればOK）
+        // 失敗しても次へ（cookie が消えていればOK）
       }
-      location.href = "/login.html";
+      location.replace("/login.html?logged_out=1&ts=" + Date.now());
     });
 
     (async () => {
+      const hint = document.getElementById("hint");
       try {
         const user = await ensureLogin();
         if (!user) return;
@@ -177,9 +199,12 @@
 
         const role = user.role ? ` (${user.role})` : "";
         document.getElementById("loginLine").textContent = `ログイン: ${display}${role}`;
+        hint.textContent = "";
       } catch (e) {
-        // me が取れない場合もログインへ
-        location.href = "/login.html";
+        // ✅ 这里如果失败，就明确告诉你，然后送回 login
+        document.getElementById("loginLine").textContent = "ログイン確認エラー";
+        document.getElementById("hint").textContent = String(e?.message || e);
+        gotoLogin("me_fetch_failed");
       }
     })();
   </script>

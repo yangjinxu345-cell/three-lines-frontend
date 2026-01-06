@@ -1,10 +1,21 @@
 // functions/api/auth/login.js
-import { validateCredentials } from "../../_lib/auth.js";
 
-// 生成 session token（优先用 crypto.randomUUID）
+function json(headers, status, data) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  const arr = Array.from(new Uint8Array(buf));
+  return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function generateSessionToken() {
   if (crypto?.randomUUID) return crypto.randomUUID();
-  // 兜底：随机 32 bytes -> hex
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes)
@@ -12,12 +23,9 @@ function generateSessionToken() {
     .join("");
 }
 
-// 写入 sessions 表（假设表名 sessions，字段 session_token / user_id / expires_at）
 async function createSession(db, userId) {
   const token = generateSessionToken();
-
-  // 30天过期（你想改更长/更短都可以）
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30天
 
   await db
     .prepare(
@@ -30,9 +38,7 @@ async function createSession(db, userId) {
   return { token, expiresAt };
 }
 
-// 生成 Set-Cookie
 function makeSessionCookie(token, maxAgeSeconds = 30 * 24 * 60 * 60) {
-  // 注意：Path=/ 必须有，否则 logout / me 可能读不到
   return [
     `session_token=${encodeURIComponent(token)}`,
     `Path=/`,
@@ -41,6 +47,69 @@ function makeSessionCookie(token, maxAgeSeconds = 30 * 24 * 60 * 60) {
     `Secure`,
     `SameSite=Lax`,
   ].join("; ");
+}
+
+// 运行时探测 users 表里的密码字段名
+async function detectPasswordColumn(db) {
+  const rs = await db.prepare(`PRAGMA table_info(users)`).all();
+  const cols = (rs?.results || []).map((r) => String(r.name || "").toLowerCase());
+
+  const candidates = [
+    "password",
+    "passwd",
+    "pass",
+    "password_hash",
+    "pass_hash",
+    "hash",
+    "pwd",
+    "pw",
+  ];
+
+  for (const c of candidates) {
+    if (cols.includes(c)) return c;
+  }
+  return null;
+}
+
+async function validateCredentials(db, username, password) {
+  // 找密码列
+  const pwCol = await detectPasswordColumn(db);
+  if (!pwCol) {
+    // 没找到密码列，直接失败（避免误登录）
+    return null;
+  }
+
+  // 查用户
+  const row = await db
+    .prepare(
+      `SELECT id, username, display_name, role, ${pwCol} AS pw
+       FROM users
+       WHERE username = ?
+       LIMIT 1`
+    )
+    .bind(username)
+    .first();
+
+  if (!row) return null;
+
+  const stored = row.pw == null ? "" : String(row.pw);
+
+  // 兼容：明文 or sha256(hex)
+  const input = String(password);
+  const inputSha = await sha256Hex(input);
+
+  const ok =
+    stored === input || // 明文
+    stored.toLowerCase() === inputSha.toLowerCase(); // sha256 hex
+
+  if (!ok) return null;
+
+  return {
+    id: row.id,
+    username: row.username,
+    display_name: row.display_name,
+    role: row.role,
+  };
 }
 
 export async function onRequest(context) {
@@ -52,16 +121,12 @@ export async function onRequest(context) {
     "Access-Control-Allow-Headers": "Content-Type",
   };
 
-  // 预检请求
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers });
   }
 
   if (request.method !== "POST") {
-    return new Response(JSON.stringify({ ok: false, error: "Method Not Allowed" }), {
-      status: 405,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 405, { ok: false, error: "Method Not Allowed" });
   }
 
   try {
@@ -70,35 +135,19 @@ export async function onRequest(context) {
     const password = body.password || "";
 
     if (!username || !password) {
-      return new Response(JSON.stringify({ ok: false, error: "用户名或密码为空" }), {
-        status: 400,
-        headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-      });
+      return json(headers, 400, { ok: false, error: "用户名或密码为空" });
     }
 
-    // ✅ 用你现有 _lib/auth.js 的校验逻辑（不改你原来的密码机制）
     const user = await validateCredentials(env.DB, username, password);
-
     if (!user) {
-      return new Response(JSON.stringify({ ok: false, error: "用户名或密码错误" }), {
-        status: 401,
-        headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-      });
+      return json(headers, 401, { ok: false, error: "用户名或密码错误" });
     }
 
     const session = await createSession(env.DB, user.id);
     const setCookie = makeSessionCookie(session.token);
 
     return new Response(
-      JSON.stringify({
-        ok: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name,
-          role: user.role,
-        },
-      }),
+      JSON.stringify({ ok: true, user }),
       {
         status: 200,
         headers: {
@@ -109,9 +158,6 @@ export async function onRequest(context) {
       }
     );
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
-      status: 500,
-      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-    });
+    return json(headers, 500, { ok: false, error: e?.message || String(e) });
   }
 }

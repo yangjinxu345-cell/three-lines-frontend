@@ -1,74 +1,59 @@
-// functions/api/auth/me.js
-
-function json(headers, status, data) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
-  });
-}
-
-function parseCookies(cookieHeader) {
-  const out = {};
-  if (!cookieHeader) return out;
-  for (const part of cookieHeader.split(";")) {
-    const [k, ...rest] = part.trim().split("=");
-    if (!k) continue;
-    out[k] = decodeURIComponent(rest.join("=") || "");
-  }
-  return out;
-}
-
 export async function onRequest(context) {
   const { request, env } = context;
-
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
-  if (request.method !== "GET") return json(headers, 405, { ok: false, error: "Method Not Allowed" });
+  if (request.method === "OPTIONS") return corsPreflight();
+  const headers = corsHeaders();
 
   try {
-    const cookies = parseCookies(request.headers.get("Cookie") || "");
-    const token = cookies.session_token || "";
-    if (!token) return json(headers, 200, { ok: true, user: null });
+    if (!env.DB) return json({ ok: false, error: "DB binding missing" }, 500, headers);
+    if (request.method !== "GET") return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
+
+    // 兼容：旧版本使用 session_token，新版本使用 session
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const token = readCookie(cookieHeader, "session") || readCookie(cookieHeader, "session_token");
+    if (!token) return json({ ok: true, user: null }, 200, headers);
 
     const row = await env.DB.prepare(`
-      SELECT
-        u.id,
-        u.username,
-        u.display_name,
-        u.role,
-        u.is_active,
-        s.expires_at
+      SELECT u.id, u.username, u.display_name, u.role, s.expires_at
       FROM sessions s
       JOIN users u ON u.id = s.user_id
       WHERE s.token = ?
-      LIMIT 1
     `).bind(token).first();
 
-    if (!row) return json(headers, 200, { ok: true, user: null });
-    if (row.is_active === 0) return json(headers, 200, { ok: true, user: null });
+    if (!row) return json({ ok: true, user: null }, 200, headers);
 
-    // 过期判断（expires_at 是 ISO 字符串）
-    const exp = row.expires_at ? Date.parse(String(row.expires_at)) : NaN;
-    if (!Number.isNaN(exp) && exp <= Date.now()) {
-      await env.DB.prepare(`DELETE FROM sessions WHERE token = ?`).bind(token).run();
-      return json(headers, 200, { ok: true, user: null });
+    // expire check (ISO string compare is safe with toISOString format)
+    if (String(row.expires_at) <= new Date().toISOString()) {
+      await env.DB.prepare(`DELETE FROM sessions WHERE token=?`).bind(token).run();
+      return json({ ok: true, user: null }, 200, headers);
     }
 
-    return json(headers, 200, {
-      ok: true,
-      user: {
-        id: row.id,
-        username: row.username,
-        display_name: row.display_name,
-        role: row.role,
-      },
-    });
+    return json(
+      { ok: true, user: { id: row.id, username: row.username, display_name: row.display_name, role: row.role } },
+      200,
+      headers
+    );
   } catch (e) {
-    return json(headers, 500, { ok: false, error: e?.message || String(e) });
+    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
   }
+}
+
+function readCookie(cookie, key) {
+  const m = cookie.match(new RegExp(`(?:^|;\\s*)${key}=([^;]+)`));
+  return m ? m[1] : "";
+}
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+function corsPreflight() {
+  return new Response(null, { status: 204, headers: corsHeaders() });
+}
+function json(obj, status = 200, headers = {}) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
+  });
 }

@@ -5,142 +5,109 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
   <style>
-    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#f4f7fb;color:#111}
-    .hero{background:linear-gradient(90deg,#1f6feb,#2f81f7);color:#fff;padding:48px 0 36px}
-    .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
-    .topbar{display:flex;align-items:center;justify-content:space-between}
-    .title{font-size:48px;font-weight:800;letter-spacing:1px;margin:24px 0 8px}
-    .subtitle{opacity:.9;margin:0 0 18px}
-    .rightnav{display:flex;gap:10px;align-items:center}
-    .btn{border:0;border-radius:14px;padding:12px 16px;font-weight:700;cursor:pointer}
-    .btnGhost{background:rgba(255,255,255,.15);color:#fff}
-    .btnDanger{background:#ff4d4f;color:#fff}
-    .card{background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(16,24,40,.08);padding:28px;margin:26px auto}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .item{display:flex;gap:14px;align-items:flex-start;border:1px solid #e6edf5;border-radius:16px;padding:18px 16px;background:#fff;cursor:pointer;text-decoration:none;color:#111}
-    .item:hover{box-shadow:0 8px 18px rgba(16,24,40,.08)}
-    .ico{width:44px;height:44px;border-radius:14px;background:#eef5ff;display:flex;align-items:center;justify-content:center}
-    .itTitle{font-size:18px;font-weight:800;margin:2px 0 6px}
-    .itText{margin:0;color:#556;line-height:1.55}
-    .muted{color:#667; font-size:14px; margin:0}
-    @media (max-width:860px){.grid{grid-template-columns:1fr}.title{font-size:36px}}
+    :root{--blue:#2563eb;--blue2:#1d4ed8;--bg:#eef3ff;--card:#fff;--text:#0f172a;--muted:#64748b;}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text);}
+    header{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:44px 28px;position:relative;overflow:hidden;}
+    header:before{content:"";position:absolute;inset:-30px;opacity:.18;background:
+      radial-gradient(circle at 20% 30%, #fff 0 120px, transparent 121px),
+      radial-gradient(circle at 80% 20%, #fff 0 180px, transparent 181px);
+    }
+    header .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:1;}
+    .btn{border:0;border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;}
+    .btnGhost{background:rgba(255,255,255,.18);color:#fff;}
+    .btnDanger{background:#ef4444;color:#fff;}
+    header h1{margin:22px 0 8px;font-size:44px;letter-spacing:.02em;position:relative;z-index:1;}
+    header p{margin:0;color:rgba(255,255,255,.9);position:relative;z-index:1;}
+    main{max-width:1100px;margin:0 auto;padding:22px;}
+    .wrap{background:rgba(255,255,255,.6);backdrop-filter: blur(6px);border:1px solid rgba(255,255,255,.6);border-radius:22px;padding:18px;box-shadow:0 18px 40px rgba(2,6,23,.08);margin-top:-38px;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
+    .tile{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid #e5e7eb;border-radius:18px;padding:16px;text-decoration:none;color:inherit;
+      box-shadow:0 10px 26px rgba(2,6,23,.06);}
+    .ico{width:44px;height:44px;border-radius:14px;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 44px;}
+    .t{font-weight:800;margin-bottom:4px}
+    .d{color:var(--muted);font-size:14px;line-height:1.4}
+    .meta{margin-top:10px;color:rgba(255,255,255,.9);font-size:14px;position:relative;z-index:1;}
+    .meta span{opacity:.9}
+    .hidden{display:none}
   </style>
 </head>
 <body>
-  <header class="hero">
-    <div class="wrap">
-      <div class="topbar">
-        <div class="muted">← メニュー</div>
-        <div class="rightnav">
-          <span id="loginInfo" style="margin-right:12px; opacity:.9; font-size:14px;"></span>
-          <a class="btn btnGhost" href="/account.html" style="text-decoration:none;">
-            <span>👤</span><span>アカウント</span>
-          </a>
-          <button id="logoutBtn" class="btn btnDanger">⛔ Logout</button>
-        </div>
-      </div>
-      <h1 class="title">3行アプリ開発プロジェクト</h1>
-      <p class="subtitle">授業内容を「3行」で振り返る学習支援アプリ</p>
+
+<header>
+  <div class="topbar">
+    <div>← メニュー</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="btnAccount" class="btn btnGhost">👤 アカウント</button>
+      <button id="btnLogout" class="btn btnDanger">🚫 Logout</button>
     </div>
-  </header>
+  </div>
 
-  <main class="wrap">
-    <section class="card">
-      <h2 style="margin:0 0 6px;font-size:24px;font-weight:900">メニュー</h2>
-      <p class="muted" style="margin:0 0 18px">使いたい機能を選んでください</p>
+  <h1>3行アプリ開発プロジェクト</h1>
+  <p>授業内容を「3行」で振り返る学習支援アプリ</p>
+  <div id="loginMeta" class="meta hidden">
+    ログイン：<span id="metaName"></span>（<span id="metaUser"></span>）
+  </div>
+</header>
 
-      <div class="grid">
-        <a class="item" href="/posts.html">
-          <div class="ico">📝</div>
-          <div>
-            <div class="itTitle">3行投稿</div>
-            <p class="itText">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</p>
-          </div>
-        </a>
+<main>
+  <div class="wrap">
+    <div class="grid">
+      <a class="tile" href="/posts.html"><div class="ico">📝</div><div><div class="t">3行投稿</div><div class="d">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div></div></a>
+      <a class="tile" href="/questions.html"><div class="ico">💬</div><div><div class="t">質問掲示板</div><div class="d">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div></div></a>
+      <a class="tile" href="/quizzes.html"><div class="ico">🧠</div><div><div class="t">クイズ</div><div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div></div></a>
+      <a class="tile" href="/reminders.html"><div class="ico">⏰</div><div><div class="t">復習リマインダー</div><div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div></div></a>
+      <a class="tile" href="/ranking.html"><div class="ico">🏆</div><div><div class="t">ランキング</div><div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div></div></a>
+      <a class="tile" href="/settings.html"><div class="ico">⚙️</div><div><div class="t">設定</div><div class="d">表示や動作の設定（ランキング非表示など）。</div></div></a>
+    </div>
+  </div>
+</main>
 
-        <a class="item" href="/questions.html">
-          <div class="ico">💬</div>
-          <div>
-            <div class="itTitle">質問掲示板</div>
-            <p class="itText">授業中・後の疑問を投稿。学生／教員が回答して学び合い。</p>
-          </div>
-        </a>
+<script>
+  async function apiGet(path){
+    const res = await fetch(path, {
+      method: "GET",
+      headers: { "Accept": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    });
+    const data = await res.json().catch(()=>null);
+    return { ok: res.ok, status: res.status, data };
+  }
 
-        <a class="item" href="/quizzes.html">
-          <div class="ico">🧠</div>
-          <div>
-            <div class="itTitle">クイズ</div>
-            <p class="itText">投稿内容から「思い出しクイズ」を表示。復習に使えます。</p>
-          </div>
-        </a>
+  async function apiPost(path, body){
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify(body || {})
+    });
+    const data = await res.json().catch(()=>null);
+    return { ok: res.ok, status: res.status, data };
+  }
 
-        <a class="item" href="/reminders.html">
-          <div class="ico">⏰</div>
-          <div>
-            <div class="itTitle">復習リマインダー</div>
-            <p class="itText">授業後の復習を習慣化。期限が来た内容を確認できます。</p>
-          </div>
-        </a>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    function qs(id){ return document.getElementById(id); }
-
-    async function apiGet(path){
-      const r = await fetch(path, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store"
-      });
-      return { ok: r.ok, status: r.status, data: await r.json().catch(()=>null) };
-    }
-
-    async function apiPost(path, body){
-      const r = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: body ? JSON.stringify(body) : null
-      });
-      let data = null;
-      try { data = await r.json(); } catch {}
-      return { ok: r.ok, status: r.status, data };
-    }
-
-    function toLogin(){
+  // 进入页面先确认登录态：没登录就去 /login
+  (async () => {
+    const r = await apiGet("/api/auth/me");
+    if (!r.ok || !r.data || !r.data.ok || !r.data.user) {
       location.replace("/login?ts=" + Date.now());
+      return;
     }
+    const u = r.data.user;
+    document.getElementById("metaName").textContent = u.display_name || u.username;
+    document.getElementById("metaUser").textContent = u.username;
+    document.getElementById("loginMeta").classList.remove("hidden");
+  })();
 
-    async function ensureAuth(){
-      // 由于刚登录完成立刻跳转时，极少数情况下 cookie 写入与导航竞争，
-      // 我们做一次轻量重试，避免误判“未登录”造成循环。
-      let me = await apiGet("/api/auth/me");
-      if (me.ok && me.data && me.data.ok && me.data.user) return me.data.user;
+  document.getElementById("btnLogout").addEventListener("click", async () => {
+    await apiPost("/api/auth/logout", {});
+    location.replace("/login?ts=" + Date.now());
+  });
 
-      await new Promise(r => setTimeout(r, 150));
-      me = await apiGet("/api/auth/me");
-      if (me.ok && me.data && me.data.ok && me.data.user) return me.data.user;
+  document.getElementById("btnAccount").addEventListener("click", () => {
+    location.href = "/account.html";
+  });
+</script>
 
-      return null;
-    }
-
-    async function boot(){
-      const user = await ensureAuth();
-      if (!user) return toLogin();
-
-      qs("loginInfo").textContent = `已登录：${user.display_name} (${user.role})`;
-
-      qs("logoutBtn").addEventListener("click", async () => {
-        const res = await apiPost("/api/auth/logout");
-        // 不管后端返回什么，都强制回登录页并带 ts 避免缓存
-        toLogin();
-      });
-    }
-
-    boot();
-  </script>
 </body>
 </html>

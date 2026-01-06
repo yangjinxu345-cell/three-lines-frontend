@@ -55,6 +55,7 @@
   async function api(path, opt = {}) {
     const res = await fetch(path, {
       credentials: "include",
+      cache: "no-store",          // ✅ 关键：禁止缓存
       ...opt
     });
     const text = await res.text();
@@ -75,19 +76,19 @@
     try {
       const r = await api("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ username, password })
       });
 
-      // 再确认一次 cookie 是否生效
-      const me = await api("/api/auth/me", { method: "GET" });
+      // ✅ 再确认一次 cookie 是否生效（加 ts 绕过任何缓存）
+      const me = await api("/api/auth/me?ts=" + Date.now(), { method: "GET" });
 
       out.textContent =
         "ログイン成功\n\nlogin:\n" + JSON.stringify(r, null, 2) +
         "\n\nme:\n" + JSON.stringify(me, null, 2);
 
       if (!me.user) {
-        throw new Error("ログイン成功したのに /api/auth/me が user=null。Cookie が保存されていない。");
+        throw new Error("ログイン成功したのに /api/auth/me が user=null。Cookie が保存されていない（または me 側で Cookie を読めていない）。");
       }
 
       // ✅ 强制跳转（用 replace 避免回退回登录页）
@@ -102,7 +103,12 @@
   document.getElementById("password").addEventListener("keydown", (e) => {
     if (e.key === "Enter") login();
   });
-</script>
+
+  // （可选）管理画面按钮：如果你还没做 admin.html，可以先跳 index
+  document.getElementById("btnToAdmin").addEventListener("click", () => {
+    location.href = "/index.html";
+  });
+  </script>
 
 </body>
 </html>

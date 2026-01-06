@@ -1,58 +1,65 @@
+// functions/api/auth/me.js
+
+function getCookie(request, name) {
+  const cookie = request.headers.get("Cookie") || "";
+  const parts = cookie.split(";").map((v) => v.trim());
+  for (const p of parts) {
+    if (p.startsWith(name + "=")) return decodeURIComponent(p.slice(name.length + 1));
+  }
+  return "";
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
-  if (request.method === "OPTIONS") return corsPreflight();
-  const headers = corsHeaders();
+
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers });
+  }
+
+  if (request.method !== "GET") {
+    return new Response(JSON.stringify({ ok: false, error: "Method Not Allowed" }), {
+      status: 405,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
+  }
+
+  const sessionToken = getCookie(request, "session_token");
+  if (!sessionToken) {
+    return new Response(JSON.stringify({ ok: true, user: null }), {
+      status: 200,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
+  }
+
+  // 这里假设你的 DB 结构是：
+  // sessions(session_token, user_id, expires_at)
+  // users(id, username, display_name, role)
+  // expires_at 如果是 ISO 字符串，可直接与 datetime('now') 比较
+  const sql = `
+    SELECT u.id, u.username, u.display_name, u.role
+    FROM sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.session_token = ?
+      AND (s.expires_at IS NULL OR s.expires_at > datetime('now'))
+    LIMIT 1
+  `;
 
   try {
-    if (!env.DB) return json({ ok: false, error: "DB binding missing" }, 500, headers);
-    if (request.method !== "GET") return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
-
-    // ✅ 修复：login/logout 都用的是 cookie 名 "session"
-    const token = readCookie(request.headers.get("Cookie") || "", "session");
-    if (!token) return json({ ok: true, user: null }, 200, headers);
-
-    const row = await env.DB.prepare(`
-      SELECT u.id, u.username, u.display_name, u.role, s.expires_at
-      FROM sessions s
-      JOIN users u ON u.id = s.user_id
-      WHERE s.token = ?
-    `).bind(token).first();
-
-    if (!row) return json({ ok: true, user: null }, 200, headers);
-
-    // expire check
-    if (String(row.expires_at) <= new Date().toISOString()) {
-      await env.DB.prepare(`DELETE FROM sessions WHERE token=?`).bind(token).run();
-      return json({ ok: true, user: null }, 200, headers);
-    }
-
-    return json({
-      ok: true,
-      user: { id: row.id, username: row.username, display_name: row.display_name, role: row.role }
-    }, 200, headers);
-
+    const row = await env.DB.prepare(sql).bind(sessionToken).first();
+    return new Response(JSON.stringify({ ok: true, user: row || null }), {
+      status: 200,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
+    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
+      status: 500,
+      headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    });
   }
-}
-
-function readCookie(cookie, key) {
-  const m = cookie.match(new RegExp(`(?:^|;\\s*)${key}=([^;]+)`));
-  return m ? decodeURIComponent(m[1]) : "";
-}
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Cache-Control": "no-store"
-  };
-}
-function corsPreflight() { return new Response(null, { status: 204, headers: corsHeaders() }); }
-function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
-  });
 }

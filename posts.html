@@ -40,6 +40,55 @@
     textarea:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
     .inline{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
     .err{color:#b91c1c;font-size:13px}
+
+    /* ===== Filter (Excel-like) ===== */
+    .filterWrap{margin-top:10px}
+    .filterTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .filterGrid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1.2fr;
+      gap:10px;
+    }
+    .filterCell{
+      background:#fbfdff;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:10px;
+    }
+    .filterLabel{
+      font-size:12px;
+      color:#334155;
+      font-weight:900;
+      margin-bottom:6px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+    }
+    select:focus{
+      border-color:#93c5fd;
+      box-shadow:0 0 0 4px rgba(59,130,246,.15);
+    }
+    .smallBtn{
+      border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer
+    }
+    .smallBtn.clear{background:#eef2ff;color:#1e40af}
+    .hint{font-size:12px;color:rgba(255,255,255,.85)}
+    @media (max-width: 860px){
+      .filterGrid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width: 520px){
+      .filterGrid{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -60,6 +109,50 @@
 <main>
   <div class="wrap">
     <div class="card">
+
+      <!-- ✅ Filter UI -->
+      <div class="filterWrap">
+        <div class="filterTitle">
+          <div class="muted" style="font-weight:900">フィルター（Excel風）</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="muted" id="filterStatus">表示：0 / 0</div>
+            <button class="smallBtn clear" id="btnClear">クリア</button>
+          </div>
+        </div>
+
+        <div class="filterGrid">
+          <div class="filterCell">
+            <div class="filterLabel">👤 名前</div>
+            <select id="fName">
+              <option value="">すべて</option>
+            </select>
+          </div>
+
+          <div class="filterCell">
+            <div class="filterLabel">🏫 クラス</div>
+            <select id="fClass">
+              <option value="">すべて</option>
+            </select>
+          </div>
+
+          <div class="filterCell">
+            <div class="filterLabel">📅 授業日</div>
+            <select id="fDate">
+              <option value="">すべて</option>
+            </select>
+          </div>
+
+          <div class="filterCell">
+            <div class="filterLabel">📘 授業名 / テーマ</div>
+            <select id="fTopic">
+              <option value="">すべて</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
       <div class="toolbar">
         <div class="muted" id="status">読み込み中…</div>
       </div>
@@ -87,18 +180,17 @@ async function api(path,opt={}){
   return data;
 }
 
-
 let ME=null;
+let ALL_ITEMS=[];   // 全件（取得済み）
+let VIEW_ITEMS=[];  // フィルタ後
 
 /* 兼容 display_name / displayName */
 function pickDisplayName(u){
   return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? "";
 }
-
 function pickRole(u){
   return u?.role ?? "";
 }
-
 function canTeacher(){
   return ME && (pickRole(ME)==="teacher" || pickRole(ME)==="admin");
 }
@@ -106,8 +198,8 @@ function canTeacher(){
 /**
  * 归属判断优先级：
  * 1) p.user_id === ME.id
- * 2) p.username === ME.username   (如果后端在 posts list 里带了 username)
- * 3) 去空格后：p.name === ME.display_name （兜底，防止“楊旻 vs 楊 旻”）
+ * 2) p.username === ME.username
+ * 3) 去空格后：p.name === ME.display_name
  */
 function canEditPost(p){
   if(!ME) return false;
@@ -116,19 +208,16 @@ function canEditPost(p){
   if(p.user_id != null && ME.id != null){
     return String(p.user_id) === String(ME.id);
   }
-
   if(p.username && ME.username){
     return String(p.username) === String(ME.username);
   }
-
   return normName(p.name) === normName(pickDisplayName(ME));
 }
 
 /* ---------- auth me ---------- */
 async function loadMe(){
   try{
-    const r = await api("/api/auth/me");
-    // 常见结构：{ok:true,user:{...}}；也可能 {ok:true,user:null}
+    const r = await api("/api/auth/me?ts="+Date.now());
     const u = r?.user ?? r?.item ?? r?.me ?? null;
     if(!u){
       ME = null;
@@ -245,7 +334,7 @@ function wire(div,p){
     cstatus.textContent="読み込み中…";
     clist.innerHTML="";
     try{
-      const data = await api(`/api/posts/${id}/comments`);
+      const data = await api(`/api/posts/${id}/comments?ts=${Date.now()}`);
       const items = data.items || data.comments || [];
       cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
       clist.innerHTML = items.map(renderCommentItem).join("");
@@ -304,16 +393,96 @@ function wire(div,p){
   }
 }
 
+/* ---------- filter ---------- */
+const $fName  = document.getElementById("fName");
+const $fClass = document.getElementById("fClass");
+const $fDate  = document.getElementById("fDate");
+const $fTopic = document.getElementById("fTopic");
+const $filterStatus = document.getElementById("filterStatus");
+
+function uniqSorted(arr){
+  const s = new Set();
+  for(const v of arr){
+    const t = String(v ?? "").trim();
+    if(t) s.add(t);
+  }
+  return Array.from(s).sort((a,b)=>a.localeCompare(b,"ja"));
+}
+
+function rebuildFilterOptions(items){
+  // 保持当前选择
+  const keep = {
+    name: $fName.value,
+    cls: $fClass.value,
+    date: $fDate.value,
+    topic: $fTopic.value
+  };
+
+  const names  = uniqSorted(items.map(x=>x.name));
+  const clses  = uniqSorted(items.map(x=>x.class_name));
+  const dates  = uniqSorted(items.map(x=>x.lesson_date)).sort((a,b)=>String(b).localeCompare(String(a))); // 新しい日付が上
+  const topics = uniqSorted(items.map(x=>x.topic));
+
+  function fill(sel, values, keepVal){
+    sel.innerHTML = `<option value="">すべて</option>` + values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    // restore if exists
+    if(keepVal && values.includes(keepVal)) sel.value = keepVal;
+    else sel.value = "";
+  }
+
+  fill($fName, names, keep.name);
+  fill($fClass, clses, keep.cls);
+  fill($fDate, dates, keep.date);
+  fill($fTopic, topics, keep.topic);
+}
+
+function applyFilters(){
+  const vName  = $fName.value;
+  const vClass = $fClass.value;
+  const vDate  = $fDate.value;
+  const vTopic = $fTopic.value;
+
+  VIEW_ITEMS = ALL_ITEMS.filter(p=>{
+    if(vName  && String(p.name||"").trim() !== vName) return false;
+    if(vClass && String(p.class_name||"").trim() !== vClass) return false;
+    if(vDate  && String(p.lesson_date||"").trim() !== vDate) return false;
+    if(vTopic && String(p.topic||"").trim() !== vTopic) return false;
+    return true;
+  });
+
+  renderList(VIEW_ITEMS);
+  $filterStatus.textContent = `表示：${VIEW_ITEMS.length} / ${ALL_ITEMS.length}`;
+}
+
+function clearFilters(){
+  $fName.value = "";
+  $fClass.value = "";
+  $fDate.value = "";
+  $fTopic.value = "";
+  applyFilters();
+}
+
+function renderList(items){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  items.forEach(p=>list.appendChild(renderPost(p)));
+}
+
 /* ---------- load list ---------- */
 async function refresh(){
   document.getElementById("status").textContent="読み込み中…";
   const list=document.getElementById("list");
   list.innerHTML="";
   try{
-    const data = await api("/api/posts?limit=50");
-    const items = data.items || [];
-    document.getElementById("status").textContent = `件数：${items.length}`;
-    items.forEach(p=>list.appendChild(renderPost(p)));
+    const data = await api("/api/posts?limit=50&ts="+Date.now());
+    ALL_ITEMS = data.items || [];
+    document.getElementById("status").textContent = `件数：${ALL_ITEMS.length}`;
+
+    // ✅ 过滤器选项刷新（基于全部数据）
+    rebuildFilterOptions(ALL_ITEMS);
+
+    // ✅ 默认应用当前过滤器（初次为“全部”）
+    applyFilters();
   }catch(e){
     document.getElementById("status").textContent="エラー: "+String(e.message||e);
   }
@@ -321,6 +490,12 @@ async function refresh(){
 
 document.getElementById("btnRefresh").onclick = refresh;
 document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
+document.getElementById("btnClear").onclick = clearFilters;
+
+// 过滤器变化即刻过滤
+[$fName,$fClass,$fDate,$fTopic].forEach(sel=>{
+  sel.addEventListener("change", applyFilters);
+});
 
 (async () => {
   await loadMe();

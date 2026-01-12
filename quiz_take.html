@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>クイズ</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; margin: 24px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    h1 { margin: 0 0 8px; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin-top:14px; }
+    .qtitle { font-size:18px; font-weight:900; margin-bottom:10px; line-height:1.4; }
+    .muted { color:#777; }
+    .err { color:#b00020; white-space: pre-wrap; }
+    button { padding:10px 14px; border-radius:10px; border:1px solid #999; background:#fff; cursor:pointer; }
+    button.primary { border-color:#111; font-weight:900; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .choice { display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid #eee; border-radius:10px; margin:8px 0; }
+    .choice:hover { border-color:#ccc; }
+    input[type="text"] { width:100%; padding:10px; border-radius:10px; border:1px solid #bbb; font-size:16px; }
+    textarea { width:100%; padding:10px; border-radius:10px; border:1px solid #bbb; font-size:16px; min-height: 88px; }
+    .bar { height:10px; background:#eee; border-radius:999px; overflow:hidden; margin-top:10px; }
+    .bar > div { height:100%; background:#111; width:0%; }
+    .result-good { color:#0a7a2f; font-weight:900; }
+    .result-bad { color:#b00020; font-weight:900; }
+    details { margin-top:10px; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; color:#555; margin-right:6px; }
+    .toplinks a { color:#111; text-decoration:none; border-bottom:1px dashed #aaa; }
+    .toplinks { font-size: 13px; color:#555; margin-bottom: 6px; }
+    .grid2 { display:grid; grid-template-columns: 1fr; gap:10px; }
+    @media (min-width: 780px){
+      .grid2 { grid-template-columns: 1fr 1fr; }
+    }
+    .mini { font-size: 12px; color:#666; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toplinks">
+    <span class="pill">学生</span>
+    <a href="/index.html">ホーム</a> / <a href="/quiz.html">クイズ一覧</a> / <span>解答</span>
+  </div>
+
+  <div class="top">
+    <div style="flex:1; min-width: 280px;">
+      <h1 id="quizTitle">クイズ</h1>
+      <div class="muted" id="quizMeta"></div>
+      <div class="bar"><div id="progress"></div></div>
+      <div class="mini" id="sourceHint"></div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button onclick="goList()">一覧へ</button>
+    </div>
+  </div>
+
+  <div class="card" id="box">
+    <div class="muted" id="status">読み込み中…</div>
+  </div>
+
+  <p class="err" id="error"></p>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const qp = new URLSearchParams(location.search);
+  const quizId = qp.get("id");
+
+  let quiz = null;
+  let idx = 0;
+  let answers = {}; // { qid: ["A"] | ["B","C"] | ["text"] }
+  let fetchSource = "";
+
+  function goList(){ location.href = "/quiz.html"; }
+
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
+  }
+
+  function ensureArray(v){
+    if (Array.isArray(v)) return v;
+    if (v == null) return [];
+    return [v];
+  }
+
+  function normalizeQuizPayload(data){
+    // 兼容：{ok:true, quiz:{...}} or {quiz:{...}} or {...直接是quiz}
+    const q = data?.quiz ?? data?.data ?? data?.item ?? data;
+    if (!q) return null;
+
+    const id = q.id ?? q.quiz_id ?? q.quizId ?? q._id ?? quizId;
+    const title = q.title ?? q.name ?? q.quiz_title ?? "クイズ";
+    const level = q.level ?? q.difficulty ?? q.diff ?? q.grade;
+
+    // questions 兼容多种字段
+    const questions0 = q.questions ?? q.items ?? q.list ?? q.question_list ?? [];
+    const questions = Array.isArray(questions0) ? questions0 : [];
+
+    const normQuestions = questions.map((x, i) => {
+      const qid = x.qid ?? x.id ?? x.question_id ?? x.questionId ?? `q${i+1}`;
+      const type = x.type ?? x.kind ?? x.qtype ?? "single"; // single/multi/text
+      const text = x.text ?? x.question ?? x.prompt ?? "";
+
+      // choices/选项
+      const choices0 = x.choices ?? x.options ?? x.choice_list ?? x.answers ?? [];
+      const choices = Array.isArray(choices0) ? choices0.map((c, j) => ({
+        id: c.id ?? c.key ?? c.value ?? String.fromCharCode(65+j),
+        text: c.text ?? c.label ?? c.name ?? c.value ?? ""
+      })) : [];
+
+      // explain 解析（如果后端给）
+      const explain = x.explain ?? x.explanation ?? x.commentary ?? "";
+
+      // 注意：学生侧一般不下发正确答案，这里不依赖 answer
+      return { qid, type, text, choices, explain, raw:x };
+    });
+
+    return { id, title, level, questions: normQuestions, raw:q };
+  }
+
+  async function tryFetchJson(urls){
+    let lastErr = null;
+    for (const url of urls){
+      try{
+        const res = await fetch(url, { method:"GET" });
+        if (!res.ok) {
+          lastErr = new Error(`${url} -> HTTP ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        if (data && data.ok === false) {
+          lastErr = new Error(`${url} -> ${data.error || "ok=false"}`);
+          continue;
+        }
+        return { url, data };
+      }catch(e){
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("no endpoint available");
+  }
+
+  function setProgress(){
+    const total = quiz?.questions?.length || 0;
+    const p = total ? Math.round((idx / total) * 100) : 0;
+    $("progress").style.width = `${p}%`;
+  }
+
+  function getCurrent(){
+    return quiz.questions[idx];
+  }
+
+  function render(){
+    $("error").textContent = "";
+    if(!quiz || !quiz.questions || quiz.questions.length === 0){
+      $("box").innerHTML = `<div class="muted">問題がありません。</div>`;
+      return;
+    }
+
+    const q = getCurrent();
+    const total = quiz.questions.length;
+    const saved = ensureArray(answers[q.qid]);
+
+    $("quizTitle").textContent = quiz.title ? quiz.title : "クイズ";
+    $("quizMeta").textContent = `問題 ${idx+1} / ${total}　（難易度: ${quiz.level ?? "—"}）`;
+    $("sourceHint").textContent = fetchSource ? `取得元: ${fetchSource}` : "";
+    setProgress();
+
+    let body = `
+      <div class="qtitle">${esc(q.text || "")}</div>
+      <div class="muted">形式: ${esc(q.type || "")}</div>
+      <div style="margin-top:12px">
+    `;
+
+    if(q.type === "single"){
+      body += (q.choices || []).map(c => `
+        <label class="choice">
+          <input type="radio" name="ans" value="${esc(c.id)}" ${saved[0]===c.id ? "checked":""}
+            onchange="pickSingle('${esc(q.qid)}', this.value)" />
+          <div><b>${esc(c.id)}</b>　${esc(c.text)}</div>
+        </label>
+      `).join("");
+      if (!q.choices || q.choices.length === 0){
+        body += `<div class="muted">（選択肢がありません）</div>`;
+      }
+    } else if(q.type === "multi"){
+      body += (q.choices || []).map(c => `
+        <label class="choice">
+          <input type="checkbox" value="${esc(c.id)}" ${saved.includes(c.id) ? "checked":""}
+            onchange="toggleMulti('${esc(q.qid)}', this.value, this.checked)" />
+          <div><b>${esc(c.id)}</b>　${esc(c.text)}</div>
+        </label>
+      `).join("");
+      if (!q.choices || q.choices.length === 0){
+        body += `<div class="muted">（選択肢がありません）</div>`;
+      }
+    } else {
+      // text/fill
+      const v = saved[0] || "";
+      body += `
+        <textarea placeholder="回答を入力" oninput="pickText('${esc(q.qid)}', this.value)">${esc(v)}</textarea>
+      `;
+    }
+
+    body += `</div>`;
+
+    body += `
+      <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap">
+        <button onclick="prev()" ${idx===0?"disabled":""}>← 前へ</button>
+        <button onclick="next()" ${idx===total-1?"disabled":""}>次へ →</button>
+        <button class="primary" onclick="submit()">提出（採点）</button>
+      </div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div class="muted">※ 途中でも提出できます（未回答は未回答のまま送信）。</div>
+        <div class="muted" style="text-align:right">自動保存: 有効（ページ更新しても回答が残ります）</div>
+      </div>
+    `;
+
+    $("box").innerHTML = body;
+  }
+
+  window.pickSingle = (qid, v) => { answers[qid] = [v]; };
+  window.toggleMulti = (qid, v, checked) => {
+    const arr = ensureArray(answers[qid]);
+    const next = checked ? Array.from(new Set([...arr, v])) : arr.filter(x => x !== v);
+    answers[qid] = next;
+  };
+  window.pickText = (qid, v) => { answers[qid] = [String(v ?? "").trim()]; };
+
+  function prev(){ if(idx>0){ idx--; render(); } }
+  function next(){ if(idx < quiz.questions.length-1){ idx++; render(); } }
+
+  async function load(){
+    if(!quizId){
+      $("status").textContent = "";
+      $("error").textContent = "quiz id がありません（?id=...）";
+      return;
+    }
+
+    $("status").textContent = "読み込み中…";
+
+    try{
+      const endpoints = [
+        `/api/quiz/public/${encodeURIComponent(quizId)}`,
+        `/api/quiz/published/${encodeURIComponent(quizId)}`,
+        `/api/quiz/${encodeURIComponent(quizId)}`
+      ];
+
+      const { url, data } = await tryFetchJson(endpoints);
+      fetchSource = url;
+
+      const q = normalizeQuizPayload(data);
+      if (!q) throw new Error("quiz payload is empty");
+
+      quiz = q;
+
+      // 恢复 localStorage（防刷新丢答案）
+      const key = `quiz_answers_${quizId}`;
+      const raw = localStorage.getItem(key);
+      if(raw){
+        try{ answers = JSON.parse(raw) || {}; }catch(_){}
+      }
+
+      // 自动保存
+      setInterval(() => {
+        try{ localStorage.setItem(key, JSON.stringify(answers)); }catch(_){}
+      }, 800);
+
+      idx = 0;
+      render();
+    }catch(e){
+      $("status").textContent = "";
+      $("error").textContent =
+        "読み込み失敗: " + (e?.message || e) + "\n\n" +
+        "※ 学生側公開APIがまだ無い場合は、次のどれかを Functions で実装してください:\n" +
+        "  - GET /api/quiz/public/:id\n" +
+        "  - GET /api/quiz/published/:id\n" +
+        "  - GET /api/quiz/:id\n";
+    }
+  }
+
+  async function tryPostJson(urls, payload){
+    let lastErr = null;
+    for (const url of urls){
+      try{
+        const res = await fetch(url, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          lastErr = new Error(`${url} -> HTTP ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        if (data && data.ok === false){
+          lastErr = new Error(`${url} -> ${data.error || "ok=false"}`);
+          continue;
+        }
+        return { url, data };
+      }catch(e){
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("no submit endpoint available");
+  }
+
+  function buildLocalGrading(){
+    // 兜底：如果后端没有 submit 端点，但 quiz 里包含正确答案字段（不推荐，但有时你会这么做）
+    // 这里尽量兼容: raw.answer / raw.correct / raw.correct_answers
+    const detail = [];
+    let score = 0;
+    for (const q of quiz.questions){
+      const raw = q.raw || {};
+      const correct0 = raw.answer ?? raw.correct ?? raw.correct_answers ?? raw.answers;
+      const correct = ensureArray(correct0).map(x => String(x));
+      const your = ensureArray(answers[q.qid]).map(x => String(x));
+
+      let ok = false;
+      if (q.type === "multi"){
+        const a = [...correct].sort().join("|");
+        const b = [...your].sort().join("|");
+        ok = a && a === b;
+      } else {
+        ok = (correct[0] ?? "") === (your[0] ?? "");
+      }
+      if (ok) score++;
+      detail.push({ qid: q.qid, correct: ok });
+    }
+    return { ok:true, score, total: quiz.questions.length, detail, _local:true };
+  }
+
+  async function submit(){
+    $("error").textContent = "";
+    try{
+      const submitEndpoints = [
+        `/api/quiz/public/${encodeURIComponent(quizId)}/submit`,
+        `/api/quiz/published/${encodeURIComponent(quizId)}/submit`,
+        `/api/quiz/${encodeURIComponent(quizId)}/submit`
+      ];
+
+      let result = null;
+      let usedUrl = "";
+
+      try{
+        const r = await tryPostJson(submitEndpoints, { answers });
+        usedUrl = r.url;
+        result = r.data;
+      }catch(e){
+        // 如果服务器 submit 还没做：尝试本地判分（仅当后端把答案下发到题目里时才可能）
+        // 若也没有答案字段，就会显示“需要实现 submit”
+        const local = buildLocalGrading();
+        if (local && local.total) {
+          usedUrl = "(local grading fallback)";
+          result = local;
+        } else {
+          throw e;
+        }
+      }
+
+      const detailMap = {};
+      (result.detail || []).forEach(d => { detailMap[d.qid] = d; });
+
+      const total = quiz.questions.length;
+      const score = result.score ?? 0;
+
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+          <div>
+            <div class="qtitle">結果</div>
+            <div class="muted">スコア: <b>${esc(score)}</b> / ${esc(result.total ?? total)}</div>
+            <div class="mini">採点: ${esc(usedUrl)} ${result._local ? "（※サーバー未実装のためローカル判定）" : ""}</div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button onclick="retry()">もう一度</button>
+            <button class="primary" onclick="goList()">一覧へ</button>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px solid #eee; margin:14px 0" />
+      `;
+
+      html += quiz.questions.map((q, i) => {
+        const d = detailMap[q.qid];
+        const ok = d?.correct === true;
+        const cls = ok ? "result-good" : "result-bad";
+        const mark = ok ? "◯" : "×";
+        const your = (answers[q.qid] || []).join(", ");
+
+        return `
+          <div style="margin:12px 0">
+            <div><b>Q${i+1}.</b> ${esc(q.text || "")}</div>
+            <div class="${cls}">${mark}　あなたの回答: ${esc(your || "（未回答）")}</div>
+            ${q.explain ? `<details><summary>解説</summary><div style="margin-top:8px">${esc(q.explain)}</div></details>` : ""}
+          </div>
+        `;
+      }).join("");
+
+      $("box").innerHTML = html;
+
+    }catch(e){
+      $("error").textContent =
+        "提出失敗: " + (e?.message || e) + "\n\n" +
+        "※ サーバー採点APIがまだ無い場合は、次のどれかを Functions で実装してください:\n" +
+        "  - POST /api/quiz/public/:id/submit\n" +
+        "  - POST /api/quiz/published/:id/submit\n" +
+        "  - POST /api/quiz/:id/submit\n";
+    }
+  }
+
+  window.retry = () => { idx = 0; render(); };
+
+  load();
+</script>
+</body>
+</html>

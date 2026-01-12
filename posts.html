@@ -33,7 +33,6 @@
     ol{margin:10px 0 0 20px}
     li{margin:6px 0;line-height:1.55}
     .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-    .count{display:inline-flex;gap:6px;align-items:center;padding:7px 10px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:800;font-size:13px}
     .hr{height:1px;background:#eef2f7;margin:12px 0}
     .comments{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#fbfdff;border:1px solid #e5e7eb}
     textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;min-height:70px}
@@ -41,7 +40,7 @@
     .inline{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
     .err{color:#b91c1c;font-size:13px}
 
-    /* ===== Filter (Excel-like) ===== */
+    /* ===== Filter ===== */
     .filterWrap{margin-top:10px}
     .filterTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
     .filterGrid{
@@ -82,13 +81,37 @@
       border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer
     }
     .smallBtn.clear{background:#eef2ff;color:#1e40af}
-    .hint{font-size:12px;color:rgba(255,255,255,.85)}
     @media (max-width: 860px){
       .filterGrid{grid-template-columns:1fr 1fr}
     }
     @media (max-width: 520px){
       .filterGrid{grid-template-columns:1fr}
     }
+
+    /* ===== YouTube-like like button ===== */
+    .iconBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid #e2e8f0;
+      background:#fff;
+      cursor:pointer;
+      font-weight:900;
+      color:#0f172a;
+      user-select:none;
+    }
+    .iconBtn:hover{background:#f8fafc}
+    .iconBtn svg{width:18px;height:18px}
+    .iconBtn .num{font-size:13px;color:#0f172a;min-width:10px}
+    .iconBtn.on{
+      background:#e0ecff;
+      border-color:#b6d2ff;
+      color:#1e40af;
+    }
+    .iconBtn.on .num{color:#1e40af}
+    .iconBtn:disabled{opacity:.6;cursor:not-allowed}
   </style>
 </head>
 <body>
@@ -110,10 +133,11 @@
   <div class="wrap">
     <div class="card">
 
-      <!-- ✅ Filter UI -->
+      <!-- Filter UI -->
       <div class="filterWrap">
         <div class="filterTitle">
-          <div class="muted" style="font-weight:900">フィルター（Excel風）</div>
+          <!-- ✅ 删除（Excel風） -->
+          <div class="muted" style="font-weight:900">フィルター</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <div class="muted" id="filterStatus">表示：0 / 0</div>
             <button class="smallBtn clear" id="btnClear">クリア</button>
@@ -123,30 +147,19 @@
         <div class="filterGrid">
           <div class="filterCell">
             <div class="filterLabel">👤 名前</div>
-            <select id="fName">
-              <option value="">すべて</option>
-            </select>
+            <select id="fName"><option value="">すべて</option></select>
           </div>
-
           <div class="filterCell">
             <div class="filterLabel">🏫 クラス</div>
-            <select id="fClass">
-              <option value="">すべて</option>
-            </select>
+            <select id="fClass"><option value="">すべて</option></select>
           </div>
-
           <div class="filterCell">
             <div class="filterLabel">📅 授業日</div>
-            <select id="fDate">
-              <option value="">すべて</option>
-            </select>
+            <select id="fDate"><option value="">すべて</option></select>
           </div>
-
           <div class="filterCell">
             <div class="filterLabel">📘 授業名 / テーマ</div>
-            <select id="fTopic">
-              <option value="">すべて</option>
-            </select>
+            <select id="fTopic"><option value="">すべて</option></select>
           </div>
         </div>
       </div>
@@ -156,6 +169,7 @@
       <div class="toolbar">
         <div class="muted" id="status">読み込み中…</div>
       </div>
+
       <div class="list" id="list"></div>
     </div>
   </div>
@@ -181,8 +195,8 @@ async function api(path,opt={}){
 }
 
 let ME=null;
-let ALL_ITEMS=[];   // 全件（取得済み）
-let VIEW_ITEMS=[];  // フィルタ後
+let ALL_ITEMS=[];
+let VIEW_ITEMS=[];
 
 /* 兼容 display_name / displayName */
 function pickDisplayName(u){
@@ -190,9 +204,6 @@ function pickDisplayName(u){
 }
 function pickRole(u){
   return u?.role ?? "";
-}
-function canTeacher(){
-  return ME && (pickRole(ME)==="teacher" || pickRole(ME)==="admin");
 }
 
 /**
@@ -238,6 +249,18 @@ async function loadMe(){
 }
 
 /* ---------- render ---------- */
+function likeSvg(filled){
+  // 轻量 YouTube-like thumb icon
+  if(filled){
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M2 21h4V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.3l1-4.6.03-.32c0-.41-.17-.79-.44-1.06L13 1 7.6 6.4C7.22 6.78 7 7.3 7 7.83V19c0 1.1.9 2 2 2h8c.82 0 1.54-.5 1.84-1.22l2.02-4.71c.09-.23.14-.47.14-.72V10z"/>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M2 21h4V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 7.59 6.41C7.22 6.78 7 7.3 7 7.83V19c0 1.1.9 2 2 2h8c.82 0 1.54-.5 1.84-1.22l2.02-4.71c.09-.23.14-.47.14-.72V10zm-2 4.06L17.98 19H9V7.83l3.34-3.34L11.12 10H20v4.06z"/>
+  </svg>`;
+}
+
 function renderPost(p){
   const div=document.createElement("div");
   div.className="post";
@@ -247,7 +270,6 @@ function renderPost(p){
   const commentCount = fmtCount(p.comment_count ?? 0);
 
   const showEdit = canEditPost(p);
-  const teacher = canTeacher();
 
   div.innerHTML = `
     <div class="meta">
@@ -266,13 +288,14 @@ function renderPost(p){
     </ol>
 
     <div class="actions">
-      <span class="count" title="いいね数">👍 <span class="likeCount">${likeCount}</span></span>
-      <span class="count" title="コメント数">💬 <span class="commentCount">${commentCount}</span></span>
+      <!-- ✅ YouTube-like -->
+      <button class="iconBtn btnLikeToggle" data-liked="0" title="いいね">
+        <span class="ico">${likeSvg(false)}</span>
+        <span class="num likeCount">${likeCount}</span>
+      </button>
 
       <button class="btn ghost btnToggle">コメント</button>
-
-      ${teacher ? `<button class="btn primary btnLike">いいね</button>` : ``}
-      ${teacher ? `<button class="btn gray btnUnlike">取消</button>` : ``}
+      <span class="muted">💬 <span class="commentCount">${commentCount}</span></span>
 
       ${showEdit ? `<button class="btn gray btnEdit">修正</button>` : ``}
 
@@ -283,14 +306,13 @@ function renderPost(p){
       <div class="muted cstatus">読み込み中…</div>
       <div class="clist"></div>
 
-      ${teacher ? `
-        <div class="hr"></div>
-        <div class="muted">教員コメントを追加</div>
-        <textarea class="cbody" placeholder="先生のフィードバックを書いてください"></textarea>
-        <div class="inline">
-          <button class="btn primary btnAdd">コメント投稿</button>
-        </div>
-      ` : ``}
+      <!-- ✅ 谁都可以评论（只要登录） -->
+      <div class="hr"></div>
+      <div class="muted">コメントを追加</div>
+      <textarea class="cbody" placeholder="コメントを書いてください"></textarea>
+      <div class="inline">
+        <button class="btn primary btnAdd">コメント投稿</button>
+      </div>
 
       <div class="err cerr" style="display:none"></div>
     </div>
@@ -301,14 +323,56 @@ function renderPost(p){
 }
 
 function renderCommentItem(c){
+  // 兼容旧字段 teacher_name
+  const who = c.user_name ?? c.teacher_name ?? c.author ?? "?";
   return `
     <div style="padding:10px 0;border-top:1px solid #eef2f7">
       <div class="muted" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>👩‍🏫 ${esc(c.teacher_name||"?")} ｜ 🕒 ${esc(c.created_at||"-")}${c.updated_at ? (" ｜ ✏️ "+esc(c.updated_at)) : ""}</div>
+        <div>🧑 ${esc(who)} ｜ 🕒 ${esc(c.created_at||"-")}${c.updated_at ? (" ｜ ✏️ "+esc(c.updated_at)) : ""}</div>
       </div>
       <div style="white-space:pre-wrap;line-height:1.55;margin-top:6px">${esc(c.body||"")}</div>
     </div>
   `;
+}
+
+/* ---------- like status loader (concurrency) ---------- */
+async function loadLikeStatusForVisible(){
+  const nodes = Array.from(document.querySelectorAll(".post"));
+  const tasks = nodes.map(n=> async ()=>{
+    const id = n.dataset.id;
+    const btn = n.querySelector(".btnLikeToggle");
+    const countEl = n.querySelector(".likeCount");
+    if(!btn) return;
+
+    try{
+      const r = await api(`/api/posts/${encodeURIComponent(id)}/like?ts=`+Date.now());
+      const liked = !!r.liked;
+      const c = (r.like_count ?? r.likeCount ?? countEl.textContent);
+      setLiked(btn, liked);
+      countEl.textContent = String(c);
+    }catch(e){
+      // 不要弹窗轰炸，只保持默认状态
+      // console.warn(e);
+    }
+  });
+
+  // 简单并发控制
+  const limit = 6;
+  let idx = 0;
+  async function worker(){
+    while(idx < tasks.length){
+      const i = idx++;
+      await tasks[i]();
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,tasks.length)}, worker));
+}
+
+function setLiked(btn, liked){
+  btn.dataset.liked = liked ? "1" : "0";
+  btn.classList.toggle("on", liked);
+  const ico = btn.querySelector(".ico");
+  if(ico) ico.innerHTML = likeSvg(liked);
 }
 
 /* ---------- actions ---------- */
@@ -320,6 +384,7 @@ function wire(div,p){
     btnEdit.onclick = () => location.href = `/posts_modify.html?id=${encodeURIComponent(id)}`;
   }
 
+  // comments
   const box = div.querySelector(".comments");
   const btnToggle = div.querySelector(".btnToggle");
   const cstatus = div.querySelector(".cstatus");
@@ -344,35 +409,48 @@ function wire(div,p){
     }
   };
 
+  // like toggle (YouTube-like)
+  const btnLikeToggle = div.querySelector(".btnLikeToggle");
   const likeCountEl = div.querySelector(".likeCount");
+  if(btnLikeToggle){
+    btnLikeToggle.onclick = async ()=>{
+      if(!ME){
+        alert("ログインしてください");
+        location.replace("/login?ts="+Date.now());
+        return;
+      }
 
-  const btnLike = div.querySelector(".btnLike");
-  if(btnLike){
-    btnLike.onclick = async () => {
+      btnLikeToggle.disabled = true;
       try{
-        const r = await api(`/api/posts/${id}/like`, { method:"POST" });
-        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
+        const likedNow = btnLikeToggle.dataset.liked === "1";
+        if(!likedNow){
+          const r = await api(`/api/posts/${id}/like`, { method:"POST" });
+          const c = r.like_count ?? r.likeCount ?? likeCountEl.textContent;
+          likeCountEl.textContent = String(c);
+          setLiked(btnLikeToggle, true);
+        }else{
+          const r = await api(`/api/posts/${id}/like`, { method:"DELETE" });
+          const c = r.like_count ?? r.likeCount ?? likeCountEl.textContent;
+          likeCountEl.textContent = String(c);
+          setLiked(btnLikeToggle, false);
+        }
       }catch(e){
         alert(String(e.message||e));
+      }finally{
+        btnLikeToggle.disabled = false;
       }
     };
   }
 
-  const btnUnlike = div.querySelector(".btnUnlike");
-  if(btnUnlike){
-    btnUnlike.onclick = async () => {
-      try{
-        const r = await api(`/api/posts/${id}/like`, { method:"DELETE" });
-        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
-      }catch(e){
-        alert(String(e.message||e));
-      }
-    };
-  }
-
+  // add comment (any logged-in user)
   const btnAdd = div.querySelector(".btnAdd");
   if(btnAdd){
     btnAdd.onclick = async () => {
+      if(!ME){
+        alert("ログインしてください");
+        location.replace("/login?ts="+Date.now());
+        return;
+      }
       const ta = div.querySelector(".cbody");
       const body = (ta.value||"").trim();
       if(!body){ alert("コメント本文が空です"); return; }
@@ -386,6 +464,9 @@ function wire(div,p){
         // reload comments quickly
         btnToggle.click();
         btnToggle.click();
+        // update comment count UI optimistically
+        const commentCountEl = div.querySelector(".commentCount");
+        commentCountEl.textContent = String(Number(commentCountEl.textContent||0)+1);
       }catch(e){
         alert(String(e.message||e));
       }
@@ -410,30 +491,28 @@ function uniqSorted(arr){
 }
 
 function rebuildFilterOptions(items){
-  // 保持当前选择
-  const keep = {
-    name: $fName.value,
-    cls: $fClass.value,
-    date: $fDate.value,
-    topic: $fTopic.value
-  };
+  const keep = { name:$fName.value, cls:$fClass.value, date:$fDate.value, topic:$fTopic.value };
 
   const names  = uniqSorted(items.map(x=>x.name));
   const clses  = uniqSorted(items.map(x=>x.class_name));
-  const dates  = uniqSorted(items.map(x=>x.lesson_date)).sort((a,b)=>String(b).localeCompare(String(a))); // 新しい日付が上
+  const dates  = uniqSorted(items.map(x=>x.lesson_date)).sort((a,b)=>String(b).localeCompare(String(a)));
   const topics = uniqSorted(items.map(x=>x.topic));
 
   function fill(sel, values, keepVal){
     sel.innerHTML = `<option value="">すべて</option>` + values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
-    // restore if exists
     if(keepVal && values.includes(keepVal)) sel.value = keepVal;
     else sel.value = "";
   }
-
   fill($fName, names, keep.name);
   fill($fClass, clses, keep.cls);
   fill($fDate, dates, keep.date);
   fill($fTopic, topics, keep.topic);
+}
+
+function renderList(items){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  items.forEach(p=>list.appendChild(renderPost(p)));
 }
 
 function applyFilters(){
@@ -452,6 +531,9 @@ function applyFilters(){
 
   renderList(VIEW_ITEMS);
   $filterStatus.textContent = `表示：${VIEW_ITEMS.length} / ${ALL_ITEMS.length}`;
+
+  // ✅ 初始化每条的“我是否已点赞”
+  loadLikeStatusForVisible();
 }
 
 function clearFilters(){
@@ -460,12 +542,6 @@ function clearFilters(){
   $fDate.value = "";
   $fTopic.value = "";
   applyFilters();
-}
-
-function renderList(items){
-  const list=document.getElementById("list");
-  list.innerHTML="";
-  items.forEach(p=>list.appendChild(renderPost(p)));
 }
 
 /* ---------- load list ---------- */
@@ -478,10 +554,7 @@ async function refresh(){
     ALL_ITEMS = data.items || [];
     document.getElementById("status").textContent = `件数：${ALL_ITEMS.length}`;
 
-    // ✅ 过滤器选项刷新（基于全部数据）
     rebuildFilterOptions(ALL_ITEMS);
-
-    // ✅ 默认应用当前过滤器（初次为“全部”）
     applyFilters();
   }catch(e){
     document.getElementById("status").textContent="エラー: "+String(e.message||e);
@@ -492,10 +565,7 @@ document.getElementById("btnRefresh").onclick = refresh;
 document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
 document.getElementById("btnClear").onclick = clearFilters;
 
-// 过滤器变化即刻过滤
-[$fName,$fClass,$fDate,$fTopic].forEach(sel=>{
-  sel.addEventListener("change", applyFilters);
-});
+[$fName,$fClass,$fDate,$fTopic].forEach(sel=> sel.addEventListener("change", applyFilters));
 
 (async () => {
   await loadMe();

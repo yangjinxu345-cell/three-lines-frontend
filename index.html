@@ -4,231 +4,264 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
-
   <style>
     :root{
-      --blue:#2563eb;
-      --blue2:#1d4ed8;
-      --bg:#eef3ff;
-      --card:#fff;
-      --text:#0f172a;
-      --muted:#64748b;
+      --blue:#2563eb;--blue2:#1d4ed8;--bg:#eef3ff;--card:#fff;--text:#0f172a;--muted:#64748b;
       --line:#e5e7eb;
     }
-
     body{
       margin:0;
-      font-family:system-ui,-apple-system,"Noto Sans JP","Yu Gothic",sans-serif;
-      background:var(--bg);
-      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+      background:var(--bg);color:var(--text);
     }
 
-    /* ===== Header（压缩版） ===== */
+    /* ===== Header：缩小占用空间 ===== */
     header{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;
-      padding:26px 28px 30px;   /* ↓ 原来 44px */
+      padding:28px 28px 30px; /* ↓ 原来 44px 28px */
       position:relative;
       overflow:hidden;
     }
     header:before{
       content:"";
-      position:absolute;inset:-30px;opacity:.18;
-      background:
+      position:absolute;inset:-30px;opacity:.18;background:
         radial-gradient(circle at 20% 30%, #fff 0 120px, transparent 121px),
         radial-gradient(circle at 80% 20%, #fff 0 180px, transparent 181px);
     }
 
-    .topbar{
-      display:flex;
-      justify-content:flex-end;
-      gap:10px;
-      position:relative;
-      z-index:1;
+    header .topbar{
+      display:flex;align-items:center;justify-content:flex-end;gap:10px;
+      position:relative;z-index:1;
       margin-bottom:10px;
     }
-
-    .btn{
-      border:0;
-      border-radius:14px;
-      padding:8px 14px;
-      font-weight:700;
-      cursor:pointer;
-    }
+    .btn{border:0;border-radius:14px;padding:9px 14px;font-weight:700;cursor:pointer;} /* 轻微缩小 */
     .btnGhost{background:rgba(255,255,255,.18);color:#fff;}
     .btnDanger{background:#ef4444;color:#fff;}
 
     header h1{
-      margin:8px 0 6px;
-      font-size:34px;          /* ↓ 原来 44px */
-      font-weight:900;
+      margin:8px 0 6px;         /* ↓ 原来 22px 0 8px */
+      font-size:34px;           /* ↓ 原来 44px */
       letter-spacing:.02em;
-      position:relative;
-      z-index:1;
+      position:relative;z-index:1;
     }
     header p{
       margin:0;
-      font-size:14px;
+      font-size:14px;           /* ↓ 更紧凑 */
       color:rgba(255,255,255,.9);
-      position:relative;
-      z-index:1;
+      position:relative;z-index:1;
     }
 
-    .meta{
-      margin-top:6px;
-      font-size:13px;
-      color:rgba(255,255,255,.85);
-      position:relative;
-      z-index:1;
-    }
-    .hidden{display:none}
-
-    /* ===== Layout ===== */
-    main{
-      max-width:1100px;
-      margin:0 auto;
-      padding:20px;
-    }
+    main{max-width:1100px;margin:0 auto;padding:22px;}
     .wrap{
       background:rgba(255,255,255,.6);
+      backdrop-filter: blur(6px);
+      border:1px solid rgba(255,255,255,.6);
       border-radius:22px;
       padding:18px;
-      margin-top:-26px;        /* ↓ header 压缩后同步 */
       box-shadow:0 18px 40px rgba(2,6,23,.08);
+      margin-top:-26px;         /* ↓ 原来 -38px，配合 header 变矮 */
     }
 
+    /* ===== Grid ===== */
     .grid{
       display:grid;
       grid-template-columns:repeat(12,1fr);
       gap:14px;
+      align-items:stretch;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns:repeat(6,1fr);}
+    }
+    @media (max-width: 640px){
+      .grid{grid-template-columns:repeat(1,1fr);}
     }
 
-    /* ===== Hero Cards（3 行 + 質問） ===== */
-    .heroCard{
-      grid-column:span 4;
+    /* ===== Small tile (existing) ===== */
+    .tile{
+      grid-column: span 4;
+      display:flex;gap:14px;align-items:flex-start;
       background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:16px;
+      text-decoration:none;
+      color:inherit;
+      box-shadow:0 10px 26px rgba(2,6,23,.06);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .tile:hover{
+      transform: translateY(-2px);
+      box-shadow:0 16px 34px rgba(2,6,23,.10);
+      border-color:#d7dde6;
+    }
+    .ico{
+      width:44px;height:44px;border-radius:14px;background:#eef2ff;
+      display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 44px;
+    }
+    .t{font-weight:900;margin-bottom:4px}
+    .d{color:var(--muted);font-size:14px;line-height:1.5}
+
+    /* ===== Big cover cards (NotebookLM-ish) ===== */
+    .heroCard{
+      grid-column: span 6;   /* 2 cards per row on 12-col grid */
+      display:flex;
+      flex-direction:column;
+      background:var(--card);
+      border:1px solid var(--line);
       border-radius:20px;
       overflow:hidden;
       text-decoration:none;
       color:inherit;
       box-shadow:0 14px 34px rgba(2,6,23,.08);
-      display:flex;
-      flex-direction:column;
-      min-height:220px;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      min-height: 240px;     /* ↓ 原来 260px，稍微省空间 */
+    }
+    .heroCard:hover{
+      transform: translateY(-2px);
+      box-shadow:0 18px 44px rgba(2,6,23,.12);
+      border-color:#d7dde6;
+    }
+    @media (max-width: 980px){
+      .heroCard{grid-column: span 6;}
+    }
+    @media (max-width: 640px){
+      .heroCard{grid-column: span 1;}
     }
 
     .cover{
-      height:120px;
+      height:130px;          /* ↓ 原来 140px */
       position:relative;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      overflow:hidden;
     }
-
+    /* abstract “image” backgrounds */
     .cover.posts{
-      background:linear-gradient(135deg,#0ea5e9,#2563eb);
+      background:
+        radial-gradient(circle at 25% 30%, rgba(255,255,255,.75) 0 60px, transparent 61px),
+        radial-gradient(circle at 70% 20%, rgba(255,255,255,.55) 0 90px, transparent 91px),
+        linear-gradient(135deg, #4f46e5 0%, #2563eb 55%, #06b6d4 110%);
     }
     .cover.questions{
-      background:linear-gradient(135deg,#a855f7,#2563eb);
+      background:
+        radial-gradient(circle at 20% 70%, rgba(255,255,255,.65) 0 70px, transparent 71px),
+        radial-gradient(circle at 80% 35%, rgba(255,255,255,.55) 0 110px, transparent 111px),
+        linear-gradient(135deg, #0ea5e9 0%, #2563eb 55%, #9333ea 120%);
     }
 
-    /* ===== 大图标（重点） ===== */
-    .bigIcon{
-      font-size:64px;           /* ← 关键：大 */
-      color:white;
-      text-shadow:0 10px 30px rgba(0,0,0,.25);
+    .coverBadge{
+      position:absolute;left:14px;bottom:12px;
+      display:flex;align-items:center;gap:12px;
+      color:#fff;
+      text-shadow:0 6px 18px rgba(0,0,0,.35);
+    }
+
+    /* ===== 关键：大图标 ===== */
+    .coverIcon{
+      width:64px;height:64px;          /* ↑ 原来 42x42 */
+      border-radius:20px;              /* 更大更圆润 */
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.25);
+      backdrop-filter: blur(8px);
+      font-size:34px;                  /* ↑ 原来 20px */
+      box-shadow:0 10px 26px rgba(0,0,0,.16);
+    }
+
+    .coverTitle{
+      font-size:22px;                  /* ↑ 略大更匹配 */
+      font-weight:900;
+      letter-spacing:.02em;
+      line-height:1.1;
+    }
+    .coverSub{
+      font-size:12px;
+      opacity:.95;
+      margin-top:4px;
     }
 
     .heroBody{
       padding:14px 16px 16px;
       display:flex;
+      gap:10px;
       flex-direction:column;
-      justify-content:space-between;
       flex:1;
-    }
-
-    .heroTitle{
-      font-size:18px;
-      font-weight:900;
-      margin-bottom:4px;
+      justify-content:space-between;
     }
     .heroDesc{
-      font-size:14px;
       color:var(--muted);
+      font-size:14px;
       line-height:1.6;
+      margin:0;
     }
-
     .heroCTA{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-top:8px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin-top:10px;
+      color:#111827;
       font-weight:800;
+      font-size:14px;
     }
-
     .pill{
-      padding:8px 12px;
+      display:inline-flex;align-items:center;gap:6px;
+      padding:8px 10px;
       border-radius:999px;
+      border:1px solid #e6e9f2;
       background:#f8fafc;
-      border:1px solid #e5e7eb;
+      color:#0f172a;
+      font-weight:800;
       font-size:13px;
     }
 
-    /* ===== Quiz Group ===== */
-    .group{
-      grid-column:span 4;
+    .meta{
+      margin-top:6px;                  /* ↓ 原来 10px */
+      color:rgba(255,255,255,.88);
+      font-size:13px;                  /* ↓ 原来 14px */
+      position:relative;z-index:1;
+    }
+    .meta span{opacity:.95}
+    .hidden{display:none}
+
+    /* ===== クイズ分组 ===== */
+    .group {
+      grid-column: span 4;
       border:2px dashed #c7d2fe;
       border-radius:20px;
       padding:14px;
       background:rgba(255,255,255,.75);
     }
-
-    .group-title{
+    .group-title {
       font-weight:900;
-      margin-bottom:10px;
       color:#3730a3;
-    }
-
-    .tile{
-      display:flex;
-      gap:14px;
-      background:white;
-      border-radius:18px;
-      padding:14px;
-      text-decoration:none;
-      color:inherit;
-      box-shadow:0 10px 26px rgba(2,6,23,.06);
-    }
-
-    .ico{
-      width:44px;height:44px;
-      border-radius:14px;
-      background:#eef2ff;
+      margin-bottom:10px;
       display:flex;
       align-items:center;
-      justify-content:center;
-      font-size:22px;
+      gap:8px;
     }
-
-    .t{font-weight:900}
-    .d{font-size:14px;color:var(--muted)}
-
-    @media (max-width:980px){
-      .heroCard,.group{grid-column:span 6;}
+    .group-grid {
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
     }
-    @media (max-width:640px){
-      .heroCard,.group{grid-column:span 12;}
+    /* group 内部 tile 不要再占 12-grid 的 span */
+    .group .tile{ grid-column: auto; }
+
+    /* 小屏时 group 也变全宽 */
+    @media (max-width: 980px){
+      .tile{grid-column: span 6;}
+      .group{grid-column: span 6;}
+    }
+    @media (max-width: 640px){
+      .tile{grid-column: span 1;}
+      .group{grid-column: span 1;}
     }
   </style>
 </head>
-
 <body>
 
 <header>
   <div class="topbar">
-    <button class="btn btnGhost" id="btnMenu">🏠 メニュー</button>
-    <button class="btn btnGhost" id="btnAccount">👤 アカウント</button>
-    <button class="btn btnDanger" id="btnLogout">🚫 Logout</button>
+    <button id="btnMenu" class="btn btnGhost">🏠 メニュー</button>
+    <button id="btnAccount" class="btn btnGhost">👤 アカウント</button>
+    <button id="btnLogout" class="btn btnDanger">🚫 Logout</button>
   </div>
 
   <h1>3行アプリ開発プロジェクト</h1>
@@ -242,18 +275,21 @@
   <div class="wrap">
     <div class="grid">
 
-      <!-- 3行投稿 -->
+      <!-- ✅ NotebookLM-ish big cover card: 3行投稿 -->
       <a class="heroCard" href="/posts.html">
         <div class="cover posts">
-          <div class="bigIcon">📝</div>
-        </div>
-        <div class="heroBody">
-          <div>
-            <div class="heroTitle">3行投稿</div>
-            <div class="heroDesc">
-              授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。
+          <div class="coverBadge">
+            <div class="coverIcon">📝</div>
+            <div>
+              <div class="coverTitle">3行投稿</div>
+              <div class="coverSub">授業の要点を「3行」で定着</div>
             </div>
           </div>
+        </div>
+        <div class="heroBody">
+          <p class="heroDesc">
+            授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。
+          </p>
           <div class="heroCTA">
             <span class="pill">すぐ投稿する</span>
             <span>→</span>
@@ -261,18 +297,21 @@
         </div>
       </a>
 
-      <!-- 質問掲示板 -->
+      <!-- ✅ NotebookLM-ish big cover card: 質問掲示板 -->
       <a class="heroCard" href="/questions.html">
         <div class="cover questions">
-          <div class="bigIcon">💬</div>
-        </div>
-        <div class="heroBody">
-          <div>
-            <div class="heroTitle">質問掲示板</div>
-            <div class="heroDesc">
-              授業中・後の疑問を投稿。学生/教員が回答して学び合い。
+          <div class="coverBadge">
+            <div class="coverIcon">💬</div>
+            <div>
+              <div class="coverTitle">質問掲示板</div>
+              <div class="coverSub">疑問を残さず解消</div>
             </div>
           </div>
+        </div>
+        <div class="heroBody">
+          <p class="heroDesc">
+            授業中・後の疑問を投稿。学生/教員が回答して学び合い。
+          </p>
           <div class="heroCTA">
             <span class="pill">質問を見る</span>
             <span>→</span>
@@ -280,53 +319,98 @@
         </div>
       </a>
 
-      <!-- クイズ -->
+      <!-- ===== クイズ 分组（保持你现有逻辑） ===== -->
       <div class="group">
         <div class="group-title">🧩 クイズ</div>
+        <div class="group-grid">
+          <a class="tile" href="/quiz.html">
+            <div class="ico">🧩</div>
+            <div>
+              <div class="t">クイズ</div>
+              <div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div>
+            </div>
+          </a>
 
-        <a class="tile" href="/quiz.html">
-          <div class="ico">🧩</div>
-          <div>
-            <div class="t">クイズ</div>
-            <div class="d">思い出しクイズで復習</div>
-          </div>
-        </a>
-
-        <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
-          <div class="ico">🛠️</div>
-          <div>
-            <div class="t">クイズ管理</div>
-            <div class="d">教員・管理者のみ</div>
-          </div>
-        </a>
+          <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
+            <div class="ico">🛠️</div>
+            <div>
+              <div class="t">クイズ管理</div>
+              <div class="d">クイズの生成・編集・公開（教員/管理者のみ）。</div>
+            </div>
+          </a>
+        </div>
       </div>
+
+      <!-- ✅ 下面这些保持原样：复习/排名/设置 都在 -->
+      <a class="tile" href="/reminders.html">
+        <div class="ico">⏰</div>
+        <div>
+          <div class="t">復習リマインダー</div>
+          <div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/ranking.html">
+        <div class="ico">🏆</div>
+        <div>
+          <div class="t">ランキング</div>
+          <div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/settings.html">
+        <div class="ico">⚙️</div>
+        <div>
+          <div class="t">設定</div>
+          <div class="d">表示や動作の設定（ランキング非表示など）。</div>
+        </div>
+      </a>
 
     </div>
   </div>
 </main>
 
 <script>
-  async function apiGet(p){
-    const r=await fetch(p,{credentials:"include"});
-    return r.json();
+  async function apiGet(path){
+    const res = await fetch(path, { credentials:"include", cache:"no-store" });
+    const data = await res.json().catch(()=>null);
+    return { ok: res.ok, data };
   }
-  (async()=>{
-    const r=await apiGet("/api/auth/me");
-    if(!r.ok){location.href="/login";return;}
-    const u=r.user;
-    metaName.textContent=u.display_name||u.username;
-    metaUser.textContent=u.username;
+  async function apiPost(path, body){
+    const res = await fetch(path, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body:JSON.stringify(body||{})
+    });
+    return res;
+  }
+  function isTeacherOrAdmin(u){
+    return u && (u.role === "admin" || u.role === "teacher");
+  }
+
+  (async ()=>{
+    const r = await apiGet("/api/auth/me?ts="+Date.now());
+    if (!r.ok || !r.data?.ok) {
+      location.replace("/login");
+      return;
+    }
+    const u = r.data.user;
+    metaName.textContent = u.display_name || u.username;
+    metaUser.textContent = u.username;
     loginMeta.classList.remove("hidden");
-    if(u.role==="admin"||u.role==="teacher"){
+
+    if (isTeacherOrAdmin(u)) {
       document.getElementById("tileQuizAdmin").classList.remove("hidden");
     }
   })();
-  btnLogout.onclick=async()=>{
-    await fetch("/api/auth/logout",{method:"POST"});
-    location.href="/login";
+
+  btnLogout.onclick = async ()=>{
+    await apiPost("/api/auth/logout",{});
+    location.replace("/login");
   };
-  btnAccount.onclick=()=>location.href="/account.html";
-  btnMenu.onclick=()=>location.href="/index.html";
+  btnAccount.onclick = ()=>location.href="/account.html";
+  btnMenu.onclick = ()=>location.href="/index.html";
 </script>
 
 </body>

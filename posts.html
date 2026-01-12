@@ -55,47 +55,83 @@
 
     .hr{height:1px;background:#eef2f7;margin:12px 0}
 
-    /* ===== Filter ===== */
-    .filterWrap{margin-top:10px}
-    .filterTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    .filterGrid{
-      margin-top:10px;
-      display:grid;
-      grid-template-columns: 1fr 1fr 1fr 1.2fr;
+    /* ===== Compact Filter Bar ===== */
+    .filterBar{
+      display:flex;
+      align-items:center;
       gap:10px;
-    }
-    .filterCell{
-      background:#fbfdff;
-      border:1px solid #e5e7eb;
+      flex-wrap:wrap;
+      padding:10px 12px;
+      border:1px solid var(--border);
       border-radius:14px;
-      padding:10px;
+      background:#fbfdff;
     }
-    .filterLabel{
-      font-size:12px;
-      color:#334155;
-      font-weight:900;
-      margin-bottom:6px;
+    .filterLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      flex:1;
+      min-width:260px;
+    }
+    .filterRight{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .fItem{
       display:flex;
       align-items:center;
       gap:6px;
-    }
-    select{
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
+      padding:6px 10px;
       border:1px solid #e5e7eb;
+      border-radius:12px;
       background:#fff;
-      font-size:14px;
-      outline:none;
     }
-    select:focus{
-      border-color:#93c5fd;
-      box-shadow:0 0 0 4px rgba(59,130,246,.15);
+    .fItem .lbl{
+      font-size:12px;
+      color:#334155;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .fItem select{
+      border:0;
+      outline:none;
+      font-size:13px;
+      background:transparent;
+      padding:2px 2px;
+      min-width:120px;
+      max-width:220px;
+    }
+    .searchBox{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      background:#fff;
+      flex:1;
+      min-width:220px;
+      max-width:520px;
+    }
+    .searchBox input{
+      border:0;
+      outline:none;
+      width:100%;
+      font-size:13px;
+      background:transparent;
     }
     .smallBtn{border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer}
     .smallBtn.clear{background:#eef2ff;color:#1e40af}
-    @media (max-width: 900px){ .filterGrid{grid-template-columns:1fr 1fr} }
-    @media (max-width: 520px){ .filterGrid{grid-template-columns:1fr} }
+    .miniText{font-size:12px;color:var(--muted);white-space:nowrap}
+
+    @media (max-width: 720px){
+      .fItem select{min-width:96px}
+      .searchBox{max-width:none}
+    }
 
     /* ===== Table ===== */
     .tableWrap{
@@ -119,6 +155,18 @@
     }
     .th, .td{padding:10px 12px}
     .th{white-space:nowrap}
+
+    /* sortable header */
+    .th.sortable{
+      cursor:pointer;
+      user-select:none;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .th.sortable:hover{background:#f1f5f9}
+    .sortMark{font-size:12px;color:#64748b}
+
     .trow{
       background:var(--row);
       border-bottom:1px solid #f1f5f9;
@@ -250,12 +298,6 @@
       line-height:1.6;
     }
     .lines li{margin:6px 0}
-    .detailGrid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-      margin-top:10px;
-    }
     .commentBox{
       margin-top:10px;
       padding:12px;
@@ -300,33 +342,39 @@
 <main>
   <div class="wrap">
     <div class="card">
-      <!-- Filter UI -->
-      <div class="filterWrap">
-        <div class="filterTitle">
-          <div class="muted" style="font-weight:900">フィルター</div>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <div class="muted" id="filterStatus">表示：0 / 0</div>
-            <button class="smallBtn clear" id="btnClear">クリア</button>
+
+      <!-- ✅ Compact Filter + Search -->
+      <div class="filterBar">
+        <div class="filterLeft">
+          <div class="fItem">
+            <span class="lbl">👤 名前</span>
+            <select id="fName"><option value="">すべて</option></select>
+          </div>
+
+          <div class="fItem">
+            <span class="lbl">🏫 クラス</span>
+            <select id="fClass"><option value="">すべて</option></select>
+          </div>
+
+          <div class="fItem">
+            <span class="lbl">📅 授業日</span>
+            <select id="fDate"><option value="">すべて</option></select>
+          </div>
+
+          <div class="fItem">
+            <span class="lbl">📘 テーマ</span>
+            <select id="fTopic"><option value="">すべて</option></select>
+          </div>
+
+          <div class="searchBox" title="テーマ/3行/名前/クラス を検索">
+            <span class="lbl" style="font-weight:900;color:#334155">🔎</span>
+            <input id="q" placeholder="検索（テーマ / 3行 / 名前 / クラス）" />
           </div>
         </div>
 
-        <div class="filterGrid">
-          <div class="filterCell">
-            <div class="filterLabel">👤 名前</div>
-            <select id="fName"><option value="">すべて</option></select>
-          </div>
-          <div class="filterCell">
-            <div class="filterLabel">🏫 クラス</div>
-            <select id="fClass"><option value="">すべて</option></select>
-          </div>
-          <div class="filterCell">
-            <div class="filterLabel">📅 授業日</div>
-            <select id="fDate"><option value="">すべて</option></select>
-          </div>
-          <div class="filterCell">
-            <div class="filterLabel">📘 授業名 / テーマ</div>
-            <select id="fTopic"><option value="">すべて</option></select>
-          </div>
+        <div class="filterRight">
+          <div class="miniText" id="filterStatus">表示：0 / 0</div>
+          <button class="smallBtn clear" id="btnClear">クリア</button>
         </div>
       </div>
 
@@ -339,16 +387,16 @@
       <!-- Table -->
       <div class="tableWrap">
         <div class="thead">
-          <div class="th">名前</div>
-          <div class="th">クラス</div>
-          <div class="th">授業日</div>
-          <div class="th">授業名 / テーマ（プレビュー）</div>
+          <div class="th sortable" data-sort="name">名前 <span class="sortMark" id="mk_name"></span></div>
+          <div class="th sortable" data-sort="class">クラス <span class="sortMark" id="mk_class"></span></div>
+          <div class="th sortable" data-sort="date">授業日 <span class="sortMark" id="mk_date"></span></div>
+          <div class="th sortable" data-sort="topic">授業名 / テーマ（プレビュー） <span class="sortMark" id="mk_topic"></span></div>
           <div class="th" style="text-align:right">操作</div>
         </div>
         <div id="tbody"></div>
       </div>
 
-      <!-- Detail panel (single, reused) -->
+      <!-- Detail panel -->
       <div id="detail" class="detailWrap"></div>
     </div>
   </div>
@@ -360,11 +408,12 @@ function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"
 function fmtCount(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
 function normName(s){ return String(s ?? "").replace(/\s+/g,"").trim(); }
 function previewText(p){
-  const a = (p.line1||"").trim();
-  const b = (p.line2||"").trim();
-  const c = (p.line3||"").trim();
-  const first = a || b || c || "";
-  return first.length > 60 ? first.slice(0,60) + "…" : first;
+  const a=(p.line1||"").trim(), b=(p.line2||"").trim(), c=(p.line3||"").trim();
+  const first=a||b||c||"";
+  return first.length>60?first.slice(0,60)+"…":first;
+}
+function normalizeForSearch(s){
+  return String(s ?? "").toLowerCase().replace(/\s+/g," ").trim();
 }
 
 async function api(path,opt={}){
@@ -380,6 +429,10 @@ let ME=null;
 let ALL_ITEMS=[];
 let VIEW_ITEMS=[];
 let ACTIVE_ID=null;
+
+/* sort state */
+let SORT_KEY = "date";   // default
+let SORT_DIR = "desc";   // asc | desc
 
 /* user helpers */
 function pickDisplayName(u){ return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? ""; }
@@ -440,6 +493,40 @@ async function loadMe(){
     ME=null;
     document.getElementById("me").textContent="未ログイン（ログインしてください）";
   }
+}
+
+/* ---------- sorting ---------- */
+function resetSortMarks(){
+  ["name","class","date","topic"].forEach(k=>{
+    const el=document.getElementById("mk_"+k);
+    if(el) el.textContent="";
+  });
+}
+function updateSortMarks(){
+  resetSortMarks();
+  const mk=document.getElementById("mk_"+SORT_KEY);
+  if(mk) mk.textContent = (SORT_DIR==="asc" ? "▲" : "▼");
+}
+function sortValue(p, key){
+  if(key==="name") return String(p.name||"");
+  if(key==="class") return String(p.class_name||"");
+  if(key==="date") return String(p.lesson_date||""); // YYYY-MM-DD
+  if(key==="topic") return String(p.topic||"");
+  return "";
+}
+function applySort(items){
+  const key = SORT_KEY;
+  const dir = SORT_DIR;
+  const mul = (dir==="asc") ? 1 : -1;
+
+  // stable-ish sort: add id as tie-breaker
+  return [...items].sort((a,b)=>{
+    const va = sortValue(a,key);
+    const vb = sortValue(b,key);
+    const c = va.localeCompare(vb,"ja");
+    if(c!==0) return c*mul;
+    return (Number(a.id)-Number(b.id))*mul;
+  });
 }
 
 /* ---------- table render ---------- */
@@ -561,13 +648,11 @@ async function openDetail(p, focusComment=false){
 
   document.getElementById("btnClose").onclick = ()=>{
     ACTIVE_ID=null;
-    // 行のactive解除
     document.querySelectorAll(".trow.active").forEach(n=>n.classList.remove("active"));
     detail.style.display="none";
     detail.innerHTML="";
   };
 
-  // load comments
   const cstatus = document.getElementById("cstatus");
   const clist = document.getElementById("clist");
   const cerr = document.getElementById("cerr");
@@ -603,13 +688,12 @@ async function openDetail(p, focusComment=false){
       });
       document.getElementById("cbody").value="";
 
-      // refresh comments
       const data = await api(`/api/posts/${encodeURIComponent(p.id)}/comments?ts=${Date.now()}`);
       const items = data.items || data.comments || [];
       cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
       clist.innerHTML = items.map(renderCommentItem).join("");
 
-      // update table count optimistically
+      // update table count
       const row = document.querySelector(`.trow[data-id="${CSS.escape(String(p.id))}"]`);
       if(row){
         const cc = row.querySelector(".commentCount");
@@ -629,14 +713,11 @@ async function openDetail(p, focusComment=false){
 
 /* ---------- wiring row ---------- */
 function wireRow(row, p){
-  // click row: open detail
   row.addEventListener("click", (ev)=>{
-    // 如果点的是按钮，不让行点击重复触发
     if(ev.target.closest("button")) return;
     toggleActive(row, p, false);
   });
 
-  // like
   const btnLike = row.querySelector(".btnLikeToggle");
   const likeCountEl = row.querySelector(".likeCount");
   btnLike.onclick = async (ev)=>{
@@ -665,14 +746,12 @@ function wireRow(row, p){
     }
   };
 
-  // comment button: open detail & focus comment
   const btnComment = row.querySelector(".btnComment");
   btnComment.onclick = async (ev)=>{
     ev.stopPropagation();
     toggleActive(row, p, true);
   };
 
-  // edit
   const btnEdit = row.querySelector(".btnEdit");
   if(btnEdit){
     btnEdit.onclick = (ev)=>{
@@ -685,7 +764,6 @@ function wireRow(row, p){
 function toggleActive(row, p, focusComment){
   const id = String(p.id);
 
-  // click same row: collapse
   if(ACTIVE_ID === id){
     ACTIVE_ID = null;
     row.classList.remove("active");
@@ -724,11 +802,12 @@ async function loadLikeStatusForVisible(){
   await Promise.all(Array.from({length:Math.min(limit,tasks.length)}, worker));
 }
 
-/* ---------- filter ---------- */
+/* ---------- filter + search + sort ---------- */
 const $fName  = document.getElementById("fName");
 const $fClass = document.getElementById("fClass");
 const $fDate  = document.getElementById("fDate");
 const $fTopic = document.getElementById("fTopic");
+const $q      = document.getElementById("q");
 const $filterStatus = document.getElementById("filterStatus");
 
 function uniqSorted(arr){
@@ -742,6 +821,7 @@ function uniqSorted(arr){
 
 function rebuildFilterOptions(items){
   const keep = { name:$fName.value, cls:$fClass.value, date:$fDate.value, topic:$fTopic.value };
+
   const names  = uniqSorted(items.map(x=>x.name));
   const clses  = uniqSorted(items.map(x=>x.class_name));
   const dates  = uniqSorted(items.map(x=>x.lesson_date)).sort((a,b)=>String(b).localeCompare(String(a)));
@@ -758,19 +838,32 @@ function rebuildFilterOptions(items){
   fill($fTopic, topics, keep.topic);
 }
 
+function matchQuery(p, q){
+  if(!q) return true;
+  const hay = normalizeForSearch(
+    [p.name, p.class_name, p.lesson_date, p.topic, p.line1, p.line2, p.line3].join(" ")
+  );
+  return hay.includes(q);
+}
+
 function applyFilters(){
   const vName  = $fName.value;
   const vClass = $fClass.value;
   const vDate  = $fDate.value;
   const vTopic = $fTopic.value;
+  const q = normalizeForSearch($q.value);
 
-  VIEW_ITEMS = ALL_ITEMS.filter(p=>{
+  let items = ALL_ITEMS.filter(p=>{
     if(vName  && String(p.name||"").trim() !== vName) return false;
     if(vClass && String(p.class_name||"").trim() !== vClass) return false;
     if(vDate  && String(p.lesson_date||"").trim() !== vDate) return false;
     if(vTopic && String(p.topic||"").trim() !== vTopic) return false;
+    if(!matchQuery(p, q)) return false;
     return true;
   });
+
+  items = applySort(items);
+  VIEW_ITEMS = items;
 
   renderTable(VIEW_ITEMS);
   $filterStatus.textContent = `表示：${VIEW_ITEMS.length} / ${ALL_ITEMS.length}`;
@@ -783,6 +876,7 @@ function applyFilters(){
     detail.innerHTML="";
   }
 
+  updateSortMarks();
   loadLikeStatusForVisible();
 }
 
@@ -791,6 +885,10 @@ function clearFilters(){
   $fClass.value = "";
   $fDate.value = "";
   $fTopic.value = "";
+  $q.value = "";
+  // default sort
+  SORT_KEY = "date";
+  SORT_DIR = "desc";
   applyFilters();
 }
 
@@ -814,15 +912,38 @@ async function refresh(){
   }
 }
 
-/* ---------- init ---------- */
+/* ---------- init: sort header click ---------- */
+document.querySelectorAll(".th.sortable").forEach(th=>{
+  th.addEventListener("click", ()=>{
+    const key = th.dataset.sort;
+    if(!key) return;
+    if(SORT_KEY === key){
+      SORT_DIR = (SORT_DIR === "asc") ? "desc" : "asc";
+    }else{
+      SORT_KEY = key;
+      SORT_DIR = (key === "date") ? "desc" : "asc"; // date default desc
+    }
+    applyFilters();
+  });
+});
+
 document.getElementById("btnRefresh").onclick = refresh;
 document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
 document.getElementById("btnClear").onclick = clearFilters;
+
 [$fName,$fClass,$fDate,$fTopic].forEach(sel=> sel.addEventListener("change", applyFilters));
+
+// search (debounce)
+let tSearch=null;
+$q.addEventListener("input", ()=>{
+  clearTimeout(tSearch);
+  tSearch=setTimeout(applyFilters, 180);
+});
 
 (async () => {
   await loadMe();
   await refresh();
+  updateSortMarks();
 })();
 </script>
 </body>

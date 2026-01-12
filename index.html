@@ -310,13 +310,23 @@
 
       <!-- クイズ -->
       <div class="group">
-        <div class="tile" href="/quiz.html">
+        <!-- ✅ 修正1：div → a（让它可点击） -->
+        <a class="tile" href="/quiz.html">
           <div class="ico">🧩</div>
           <div>
             <div class="t">クイズ</div>
             <div class="d">思い出しクイズで復習</div>
           </div>
-        </div>
+        </a>
+
+        <!-- ✅ 新增：クイズ管理（admin/teacher 才显示） -->
+        <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
+          <div class="ico">🛠️</div>
+          <div>
+            <div class="t">クイズ管理</div>
+            <div class="d">生成・編集・公開（教員/管理者）</div>
+          </div>
+        </a>
       </div>
 
       <!-- 以下のボタンはすべて保持 -->
@@ -341,6 +351,13 @@
   metaName.textContent = r.user.display_name || r.user.username;
   metaUser.textContent = r.user.username;
   loginMeta.classList.remove("hidden");
+
+  // ✅ admin/teacher なら クイズ管理 を表示
+  const role = String(r.user.role || "");
+  if (role === "admin" || role === "teacher") {
+    const el = document.getElementById("tileQuizAdmin");
+    if (el) el.classList.remove("hidden");
+  }
 })();
 btnLogout.onclick=async()=>{await fetch("/api/auth/logout",{method:"POST"});location.href="/login";};
 btnAccount.onclick=()=>location.href="/account.html";

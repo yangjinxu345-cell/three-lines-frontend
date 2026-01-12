@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
-      --pri:#2563eb; --pri2:#1d4ed8; --chip:#eef2ff;
+      --pri:#2563eb; --pri2:#1d4ed8;
       --shadow:0 10px 30px rgba(2,6,23,.08);
       --r:18px;
     }
@@ -77,18 +77,12 @@
       border-color:#93c5fd;
       box-shadow:0 0 0 4px rgba(59,130,246,.15);
     }
-    .smallBtn{
-      border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer
-    }
+    .smallBtn{border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer}
     .smallBtn.clear{background:#eef2ff;color:#1e40af}
-    @media (max-width: 860px){
-      .filterGrid{grid-template-columns:1fr 1fr}
-    }
-    @media (max-width: 520px){
-      .filterGrid{grid-template-columns:1fr}
-    }
+    @media (max-width: 860px){ .filterGrid{grid-template-columns:1fr 1fr} }
+    @media (max-width: 520px){ .filterGrid{grid-template-columns:1fr} }
 
-    /* ===== YouTube-like like button ===== */
+    /* ===== YouTube-like icon buttons ===== */
     .iconBtn{
       display:inline-flex;
       align-items:center;
@@ -112,6 +106,11 @@
     }
     .iconBtn.on .num{color:#1e40af}
     .iconBtn:disabled{opacity:.6;cursor:not-allowed}
+
+    .iconOnly{
+      padding:8px 10px;
+      gap:6px;
+    }
   </style>
 </head>
 <body>
@@ -132,11 +131,9 @@
 <main>
   <div class="wrap">
     <div class="card">
-
       <!-- Filter UI -->
       <div class="filterWrap">
         <div class="filterTitle">
-          <!-- ✅ 删除（Excel風） -->
           <div class="muted" style="font-weight:900">フィルター</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <div class="muted" id="filterStatus">表示：0 / 0</div>
@@ -182,11 +179,7 @@ function fmtCount(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
 function normName(s){ return String(s ?? "").replace(/\s+/g,"").trim(); }
 
 async function api(path,opt={}){
-  const res=await fetch(path,{
-    credentials:"include",
-    cache:"no-store",
-    ...opt
-  });
+  const res=await fetch(path,{ credentials:"include", cache:"no-store", ...opt });
   const text=await res.text();
   let data; try{data=JSON.parse(text)}catch{data=text}
   if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
@@ -199,29 +192,14 @@ let ALL_ITEMS=[];
 let VIEW_ITEMS=[];
 
 /* 兼容 display_name / displayName */
-function pickDisplayName(u){
-  return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? "";
-}
-function pickRole(u){
-  return u?.role ?? "";
-}
+function pickDisplayName(u){ return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? ""; }
+function pickRole(u){ return u?.role ?? ""; }
 
-/**
- * 归属判断优先级：
- * 1) p.user_id === ME.id
- * 2) p.username === ME.username
- * 3) 去空格后：p.name === ME.display_name
- */
 function canEditPost(p){
   if(!ME) return false;
   if(pickRole(ME)==="admin") return true;
-
-  if(p.user_id != null && ME.id != null){
-    return String(p.user_id) === String(ME.id);
-  }
-  if(p.username && ME.username){
-    return String(p.username) === String(ME.username);
-  }
+  if(p.user_id != null && ME.id != null) return String(p.user_id) === String(ME.id);
+  if(p.username && ME.username) return String(p.username) === String(ME.username);
   return normName(p.name) === normName(pickDisplayName(ME));
 }
 
@@ -236,21 +214,18 @@ async function loadMe(){
       return;
     }
     ME = u;
-
     const dn = pickDisplayName(u);
     const role = pickRole(u);
     const un = u.username ?? "";
-    document.getElementById("me").textContent =
-      `ログイン：${dn || un || "?"}（${role || "?"}）`;
+    document.getElementById("me").textContent = `ログイン：${dn || un || "?"}（${role || "?"}）`;
   }catch(e){
     ME = null;
     document.getElementById("me").textContent = "未ログイン（ログインしてください）";
   }
 }
 
-/* ---------- render ---------- */
+/* ---------- icons ---------- */
 function likeSvg(filled){
-  // 轻量 YouTube-like thumb icon
   if(filled){
     return `<svg viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M2 21h4V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.3l1-4.6.03-.32c0-.41-.17-.79-.44-1.06L13 1 7.6 6.4C7.22 6.78 7 7.3 7 7.83V19c0 1.1.9 2 2 2h8c.82 0 1.54-.5 1.84-1.22l2.02-4.71c.09-.23.14-.47.14-.72V10z"/>
@@ -260,7 +235,20 @@ function likeSvg(filled){
     <path fill="currentColor" d="M2 21h4V9H2v12zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 7.59 6.41C7.22 6.78 7 7.3 7 7.83V19c0 1.1.9 2 2 2h8c.82 0 1.54-.5 1.84-1.22l2.02-4.71c.09-.23.14-.47.14-.72V10zm-2 4.06L17.98 19H9V7.83l3.34-3.34L11.12 10H20v4.06z"/>
   </svg>`;
 }
+function chatSvg(){
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M4 4h16v12H7.17L4 19.17V4zm3 5h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z"/>
+  </svg>`;
+}
 
+function setLiked(btn, liked){
+  btn.dataset.liked = liked ? "1" : "0";
+  btn.classList.toggle("on", liked);
+  const ico = btn.querySelector(".ico");
+  if(ico) ico.innerHTML = likeSvg(liked);
+}
+
+/* ---------- render ---------- */
 function renderPost(p){
   const div=document.createElement("div");
   div.className="post";
@@ -268,7 +256,6 @@ function renderPost(p){
 
   const likeCount = fmtCount(p.like_count ?? 0);
   const commentCount = fmtCount(p.comment_count ?? 0);
-
   const showEdit = canEditPost(p);
 
   div.innerHTML = `
@@ -288,14 +275,16 @@ function renderPost(p){
     </ol>
 
     <div class="actions">
-      <!-- ✅ YouTube-like -->
       <button class="iconBtn btnLikeToggle" data-liked="0" title="いいね">
         <span class="ico">${likeSvg(false)}</span>
         <span class="num likeCount">${likeCount}</span>
       </button>
 
-      <button class="btn ghost btnToggle">コメント</button>
-      <span class="muted">💬 <span class="commentCount">${commentCount}</span></span>
+      <!-- ✅ コメント按钮改成图标 -->
+      <button class="iconBtn iconOnly btnToggle" title="コメント">
+        <span class="ico">${chatSvg()}</span>
+        <span class="num commentCount">${commentCount}</span>
+      </button>
 
       ${showEdit ? `<button class="btn gray btnEdit">修正</button>` : ``}
 
@@ -306,7 +295,6 @@ function renderPost(p){
       <div class="muted cstatus">読み込み中…</div>
       <div class="clist"></div>
 
-      <!-- ✅ 谁都可以评论（只要登录） -->
       <div class="hr"></div>
       <div class="muted">コメントを追加</div>
       <textarea class="cbody" placeholder="コメントを書いてください"></textarea>
@@ -323,7 +311,6 @@ function renderPost(p){
 }
 
 function renderCommentItem(c){
-  // 兼容旧字段 teacher_name
   const who = c.user_name ?? c.teacher_name ?? c.author ?? "?";
   return `
     <div style="padding:10px 0;border-top:1px solid #eef2f7">
@@ -335,7 +322,7 @@ function renderCommentItem(c){
   `;
 }
 
-/* ---------- like status loader (concurrency) ---------- */
+/* ---------- like status loader ---------- */
 async function loadLikeStatusForVisible(){
   const nodes = Array.from(document.querySelectorAll(".post"));
   const tasks = nodes.map(n=> async ()=>{
@@ -346,33 +333,15 @@ async function loadLikeStatusForVisible(){
 
     try{
       const r = await api(`/api/posts/${encodeURIComponent(id)}/like?ts=`+Date.now());
-      const liked = !!r.liked;
-      const c = (r.like_count ?? r.likeCount ?? countEl.textContent);
-      setLiked(btn, liked);
-      countEl.textContent = String(c);
-    }catch(e){
-      // 不要弹窗轰炸，只保持默认状态
-      // console.warn(e);
-    }
+      setLiked(btn, !!r.liked);
+      countEl.textContent = String(r.like_count ?? r.likeCount ?? countEl.textContent);
+    }catch(_e){}
   });
 
-  // 简单并发控制
   const limit = 6;
   let idx = 0;
-  async function worker(){
-    while(idx < tasks.length){
-      const i = idx++;
-      await tasks[i]();
-    }
-  }
+  async function worker(){ while(idx < tasks.length){ await tasks[idx++](); } }
   await Promise.all(Array.from({length:Math.min(limit,tasks.length)}, worker));
-}
-
-function setLiked(btn, liked){
-  btn.dataset.liked = liked ? "1" : "0";
-  btn.classList.toggle("on", liked);
-  const ico = btn.querySelector(".ico");
-  if(ico) ico.innerHTML = likeSvg(liked);
 }
 
 /* ---------- actions ---------- */
@@ -380,11 +349,9 @@ function wire(div,p){
   const id = Number(p.id);
 
   const btnEdit = div.querySelector(".btnEdit");
-  if(btnEdit){
-    btnEdit.onclick = () => location.href = `/posts_modify.html?id=${encodeURIComponent(id)}`;
-  }
+  if(btnEdit) btnEdit.onclick = () => location.href = `/posts_modify.html?id=${encodeURIComponent(id)}`;
 
-  // comments
+  // ✅ comments toggle (FIXED!)
   const box = div.querySelector(".comments");
   const btnToggle = div.querySelector(".btnToggle");
   const cstatus = div.querySelector(".cstatus");
@@ -392,9 +359,13 @@ function wire(div,p){
   const cerr = div.querySelector(".cerr");
 
   btnToggle.onclick = async () => {
-    const shown = box.style.display !== "none";
-    if(shown){ box.style.display="none"; return; }
-    box.style.display="";
+    const isVisible = getComputedStyle(box).display !== "none"; // ✅ 关键修复
+    if(isVisible){
+      box.style.display = "none";
+      return;
+    }
+    box.style.display = "block";
+
     cerr.style.display="none"; cerr.textContent="";
     cstatus.textContent="読み込み中…";
     clist.innerHTML="";
@@ -409,7 +380,7 @@ function wire(div,p){
     }
   };
 
-  // like toggle (YouTube-like)
+  // like toggle
   const btnLikeToggle = div.querySelector(".btnLikeToggle");
   const likeCountEl = div.querySelector(".likeCount");
   if(btnLikeToggle){
@@ -425,13 +396,11 @@ function wire(div,p){
         const likedNow = btnLikeToggle.dataset.liked === "1";
         if(!likedNow){
           const r = await api(`/api/posts/${id}/like`, { method:"POST" });
-          const c = r.like_count ?? r.likeCount ?? likeCountEl.textContent;
-          likeCountEl.textContent = String(c);
+          likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
           setLiked(btnLikeToggle, true);
         }else{
           const r = await api(`/api/posts/${id}/like`, { method:"DELETE" });
-          const c = r.like_count ?? r.likeCount ?? likeCountEl.textContent;
-          likeCountEl.textContent = String(c);
+          likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
           setLiked(btnLikeToggle, false);
         }
       }catch(e){
@@ -442,7 +411,7 @@ function wire(div,p){
     };
   }
 
-  // add comment (any logged-in user)
+  // add comment
   const btnAdd = div.querySelector(".btnAdd");
   if(btnAdd){
     btnAdd.onclick = async () => {
@@ -461,9 +430,10 @@ function wire(div,p){
           body: JSON.stringify({ body })
         });
         ta.value="";
-        // reload comments quickly
+        // reload comments
         btnToggle.click();
         btnToggle.click();
+
         // update comment count UI optimistically
         const commentCountEl = div.querySelector(".commentCount");
         commentCountEl.textContent = String(Number(commentCountEl.textContent||0)+1);
@@ -492,7 +462,6 @@ function uniqSorted(arr){
 
 function rebuildFilterOptions(items){
   const keep = { name:$fName.value, cls:$fClass.value, date:$fDate.value, topic:$fTopic.value };
-
   const names  = uniqSorted(items.map(x=>x.name));
   const clses  = uniqSorted(items.map(x=>x.class_name));
   const dates  = uniqSorted(items.map(x=>x.lesson_date)).sort((a,b)=>String(b).localeCompare(String(a)));
@@ -531,8 +500,6 @@ function applyFilters(){
 
   renderList(VIEW_ITEMS);
   $filterStatus.textContent = `表示：${VIEW_ITEMS.length} / ${ALL_ITEMS.length}`;
-
-  // ✅ 初始化每条的“我是否已点赞”
   loadLikeStatusForVisible();
 }
 
@@ -547,13 +514,11 @@ function clearFilters(){
 /* ---------- load list ---------- */
 async function refresh(){
   document.getElementById("status").textContent="読み込み中…";
-  const list=document.getElementById("list");
-  list.innerHTML="";
+  document.getElementById("list").innerHTML="";
   try{
     const data = await api("/api/posts?limit=50&ts="+Date.now());
     ALL_ITEMS = data.items || [];
     document.getElementById("status").textContent = `件数：${ALL_ITEMS.length}`;
-
     rebuildFilterOptions(ALL_ITEMS);
     applyFilters();
   }catch(e){
@@ -564,13 +529,9 @@ async function refresh(){
 document.getElementById("btnRefresh").onclick = refresh;
 document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
 document.getElementById("btnClear").onclick = clearFilters;
-
 [$fName,$fClass,$fDate,$fTopic].forEach(sel=> sel.addEventListener("change", applyFilters));
 
-(async () => {
-  await loadMe();
-  await refresh();
-})();
+(async () => { await loadMe(); await refresh(); })();
 </script>
 </body>
 </html>

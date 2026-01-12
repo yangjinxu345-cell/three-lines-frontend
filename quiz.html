@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>クイズ一覧</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; margin: 24px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 { margin: 0 0 12px; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin: 10px 0 16px; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:14px; margin:12px 0; }
+    .title { font-size:18px; font-weight:800; }
+    .meta { color:#666; font-size:13px; margin-top:6px; line-height:1.6; }
+    button { padding:10px 14px; border-radius:10px; border:1px solid #999; background:#fff; cursor:pointer; }
+    button.primary { border-color:#111; font-weight:800; }
+    select, input { padding:10px; border-radius:10px; border:1px solid #bbb; }
+    .muted { color:#888; }
+    .err { color:#b00020; white-space: pre-wrap; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; color:#555; margin-right:6px; }
+    .toplinks a { color:#111; text-decoration:none; border-bottom:1px dashed #aaa; }
+    .toplinks { font-size: 13px; color:#555; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toplinks">
+    <span class="pill">学生</span>
+    <a href="/index.html">ホーム</a> / <span>クイズ</span>
+  </div>
+
+  <h1>クイズ一覧（公開）</h1>
+
+  <div class="row">
+    <label>難易度:
+      <select id="level">
+        <option value="">全部</option>
+        <option value="1">1（易）</option>
+        <option value="2">2</option>
+        <option value="3">3（普）</option>
+        <option value="4">4</option>
+        <option value="5">5（難）</option>
+      </select>
+    </label>
+
+    <label>検索:
+      <input id="q" placeholder="タイトル検索" />
+    </label>
+
+    <button class="primary" id="reload">更新</button>
+    <span class="muted" id="status"></span>
+  </div>
+
+  <div id="list"></div>
+  <p class="err" id="error"></p>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
+  }
+
+  function fmtLevel(lv){
+    if (lv === undefined || lv === null || lv === "") return "—";
+    const n = Number(lv);
+    const map = {1:"易",2:"やや易",3:"普通",4:"やや難",5:"難"};
+    return `${n}（${map[n] || ""}）`;
+  }
+
+  async function tryFetchJson(urls){
+    let lastErr = null;
+    for (const url of urls){
+      try{
+        const res = await fetch(url, { method:"GET" });
+        if (!res.ok) {
+          lastErr = new Error(`${url} -> HTTP ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        if (data && data.ok === false) {
+          lastErr = new Error(`${url} -> ${data.error || "ok=false"}`);
+          continue;
+        }
+        return { url, data };
+      }catch(e){
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("no endpoint available");
+  }
+
+  // 尽量兼容后端字段命名差异：items / quizzes / data / list ...
+  function normalizeListPayload(data){
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    const arr =
+      data.items ||
+      data.quizzes ||
+      data.list ||
+      data.data ||
+      (data.result && (data.result.items || data.result.list)) ||
+      [];
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function normalizeQuizItem(x){
+    // 兼容：id / quiz_id
+    const id = x.id ?? x.quiz_id ?? x.quizId ?? x._id;
+    const title = x.title ?? x.name ?? x.quiz_title ?? "(no title)";
+    const level = x.level ?? x.difficulty ?? x.diff ?? x.grade;
+    const question_count = x.question_count ?? x.count ?? x.questions_count ?? (Array.isArray(x.questions) ? x.questions.length : undefined);
+    const updated_at = x.updated_at ?? x.updatedAt ?? x.published_at ?? x.publishedAt ?? x.created_at ?? x.createdAt;
+    return { id, title, level, question_count, updated_at, raw:x };
+  }
+
+  async function load(){
+    $("error").textContent = "";
+    $("status").textContent = "読み込み中…";
+    $("list").innerHTML = "";
+
+    try{
+      const endpoints = [
+        "/api/quiz/public",
+        "/api/quiz/published",
+        "/api/quiz",
+        "/api/quiz/list"
+      ];
+
+      const { url, data } = await tryFetchJson(endpoints);
+      const items0 = normalizeListPayload(data);
+      const items = items0.map(normalizeQuizItem).filter(x => x.id !== undefined && x.id !== null);
+
+      const lv = $("level").value;
+      const q = $("q").value.trim().toLowerCase();
+
+      let filtered = items;
+      if(lv) filtered = filtered.filter(x => String(x.level ?? "") === String(lv));
+      if(q) filtered = filtered.filter(x => String(x.title ?? "").toLowerCase().includes(q));
+
+      if(filtered.length === 0){
+        $("list").innerHTML = `<p class="muted">該当するクイズがありません。</p>`;
+      }else{
+        $("list").innerHTML = filtered.map(x => `
+          <div class="card">
+            <div class="title">${esc(x.title)}</div>
+            <div class="meta">
+              難易度: ${esc(fmtLevel(x.level))} / 問題数: ${esc(x.question_count ?? "?")}
+              ${x.updated_at ? ` / 更新: ${esc(x.updated_at)}` : ""}
+              <br><span class="muted">（取得元: ${esc(url)}）</span>
+            </div>
+            <div style="margin-top:10px">
+              <button class="primary" onclick="startQuiz('${esc(x.id)}')">このクイズを解く</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      $("status").textContent = `件数: ${filtered.length}`;
+    }catch(e){
+      $("status").textContent = "";
+      $("error").textContent =
+        "読み込み失敗: " + (e?.message || e) + "\n\n" +
+        "※ 学生側公開APIがまだ無い場合は、次のどれかを Functions で実装してください:\n" +
+        "  - GET /api/quiz/public\n" +
+        "  - GET /api/quiz/published\n" +
+        "  - GET /api/quiz\n";
+    }
+  }
+
+  window.startQuiz = (id) => {
+    location.href = `/quiz_take.html?id=${encodeURIComponent(id)}`;
+  };
+
+  $("reload").addEventListener("click", load);
+  $("level").addEventListener("change", load);
+  $("q").addEventListener("input", () => {
+    clearTimeout(window.__t);
+    window.__t = setTimeout(load, 250);
+  });
+
+  load();
+</script>
+</body>
+</html>

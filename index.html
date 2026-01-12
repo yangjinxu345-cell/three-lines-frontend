@@ -52,12 +52,63 @@
 <main>
   <div class="wrap">
     <div class="grid">
-      <a class="tile" href="/posts.html"><div class="ico">📝</div><div><div class="t">3行投稿</div><div class="d">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div></div></a>
-      <a class="tile" href="/questions.html"><div class="ico">💬</div><div><div class="t">質問掲示板</div><div class="d">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div></div></a>
-      <a class="tile" href="/quizzes.html"><div class="ico">🧠</div><div><div class="t">クイズ</div><div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div></div></a>
-      <a class="tile" href="/reminders.html"><div class="ico">⏰</div><div><div class="t">復習リマインダー</div><div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div></div></a>
-      <a class="tile" href="/ranking.html"><div class="ico">🏆</div><div><div class="t">ランキング</div><div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div></div></a>
-      <a class="tile" href="/settings.html"><div class="ico">⚙️</div><div><div class="t">設定</div><div class="d">表示や動作の設定（ランキング非表示など）。</div></div></a>
+      <a class="tile" href="/posts.html">
+        <div class="ico">📝</div>
+        <div>
+          <div class="t">3行投稿</div>
+          <div class="d">授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/questions.html">
+        <div class="ico">💬</div>
+        <div>
+          <div class="t">質問掲示板</div>
+          <div class="d">授業中・後の疑問を投稿。学生/教員が回答して学び合い。</div>
+        </div>
+      </a>
+
+      <!-- ✅ クイズ（学生側）: /quizzes.html → /quiz.html / アイコン変更 -->
+      <a class="tile" href="/quiz.html">
+        <div class="ico">🧩</div>
+        <div>
+          <div class="t">クイズ</div>
+          <div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div>
+        </div>
+      </a>
+
+      <!-- ✅ クイズ管理（教員/管理者のみ表示） -->
+      <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
+        <div class="ico">🛠️</div>
+        <div>
+          <div class="t">クイズ管理</div>
+          <div class="d">クイズの生成・編集・公開（教員/管理者のみ）。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/reminders.html">
+        <div class="ico">⏰</div>
+        <div>
+          <div class="t">復習リマインダー</div>
+          <div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/ranking.html">
+        <div class="ico">🏆</div>
+        <div>
+          <div class="t">ランキング</div>
+          <div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
+        </div>
+      </a>
+
+      <a class="tile" href="/settings.html">
+        <div class="ico">⚙️</div>
+        <div>
+          <div class="t">設定</div>
+          <div class="d">表示や動作の設定（ランキング非表示など）。</div>
+        </div>
+      </a>
     </div>
   </div>
 </main>
@@ -86,6 +137,11 @@
     return { ok: res.ok, status: res.status, data };
   }
 
+  function isTeacherOrAdmin(u){
+    const role = String(u?.role || "");
+    return role === "admin" || role === "teacher";
+  }
+
   // 进入页面先确认登录态：没登录就去 /login
   (async () => {
     const r = await apiGet("/api/auth/me?ts=" + Date.now()); // ✅ 加 ts 更稳
@@ -94,9 +150,15 @@
       return;
     }
     const u = r.data.user;
+
     document.getElementById("metaName").textContent = u.display_name || u.username;
     document.getElementById("metaUser").textContent = u.username;
     document.getElementById("loginMeta").classList.remove("hidden");
+
+    // ✅ 只有 admin/teacher 才显示 クイズ管理
+    if (isTeacherOrAdmin(u)) {
+      document.getElementById("tileQuizAdmin").classList.remove("hidden");
+    }
   })();
 
   document.getElementById("btnLogout").addEventListener("click", async () => {

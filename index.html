@@ -66,7 +66,7 @@
       .grid{grid-template-columns:repeat(1,1fr);}
     }
 
-    /* ===== Small tile (existing) ===== */
+    /* ===== Small tile ===== */
     .tile{
       grid-column: span 4;
       display:flex;gap:14px;align-items:flex-start;
@@ -91,9 +91,9 @@
     .t{font-weight:900;margin-bottom:4px}
     .d{color:var(--muted);font-size:14px;line-height:1.5}
 
-    /* ===== Big cover cards (NotebookLM-ish) ===== */
+    /* ===== Compact hero cards (now 3 in a row) ===== */
     .heroCard{
-      grid-column: span 6;   /* 2 cards per row on 12-col grid */
+      grid-column: span 4;           /* ✅ 让 3行投稿 / 質問掲示板 / クイズ 同一行 */
       display:flex;
       flex-direction:column;
       background:var(--card);
@@ -104,52 +104,57 @@
       color:inherit;
       box-shadow:0 14px 34px rgba(2,6,23,.08);
       transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-      min-height: 260px;
+      min-height: 220px;             /* ✅ 更省空间 */
     }
     .heroCard:hover{
       transform: translateY(-2px);
       box-shadow:0 18px 44px rgba(2,6,23,.12);
       border-color:#d7dde6;
     }
+
     @media (max-width: 980px){
-      .heroCard{grid-column: span 6;}
+      .heroCard{grid-column: span 6;} /* 平板两列 */
     }
     @media (max-width: 640px){
-      .heroCard{grid-column: span 1;}
+      .heroCard{grid-column: span 1;} /* 手机单列 */
     }
 
     .cover{
-      height:140px;
+      height:120px;                  /* ✅ 更省空间 */
       position:relative;
       overflow:hidden;
     }
-    /* abstract “image” backgrounds */
+
+    /* ✅ 更醒目的“封面图”风格：强对比渐变 + 大形状高光 */
     .cover.posts{
       background:
-        radial-gradient(circle at 25% 30%, rgba(255,255,255,.75) 0 60px, transparent 61px),
-        radial-gradient(circle at 70% 20%, rgba(255,255,255,.55) 0 90px, transparent 91px),
-        linear-gradient(135deg, #4f46e5 0%, #2563eb 55%, #06b6d4 110%);
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.82) 0 72px, transparent 73px),
+        radial-gradient(circle at 82% 18%, rgba(255,255,255,.55) 0 120px, transparent 121px),
+        radial-gradient(circle at 62% 92%, rgba(255,255,255,.35) 0 140px, transparent 141px),
+        linear-gradient(135deg, #0ea5e9 0%, #2563eb 45%, #22c55e 120%);
     }
     .cover.questions{
       background:
-        radial-gradient(circle at 20% 70%, rgba(255,255,255,.65) 0 70px, transparent 71px),
-        radial-gradient(circle at 80% 35%, rgba(255,255,255,.55) 0 110px, transparent 111px),
-        linear-gradient(135deg, #0ea5e9 0%, #2563eb 55%, #9333ea 120%);
+        radial-gradient(circle at 18% 78%, rgba(255,255,255,.78) 0 78px, transparent 79px),
+        radial-gradient(circle at 86% 40%, rgba(255,255,255,.52) 0 140px, transparent 141px),
+        radial-gradient(circle at 52% 10%, rgba(255,255,255,.32) 0 120px, transparent 121px),
+        linear-gradient(135deg, #a855f7 0%, #2563eb 45%, #f97316 120%);
     }
 
     .coverBadge{
       position:absolute;left:14px;bottom:12px;
       display:flex;align-items:center;gap:10px;
       color:#fff;
-      text-shadow:0 6px 18px rgba(0,0,0,.35);
+      text-shadow:0 8px 22px rgba(0,0,0,.38);
     }
     .coverIcon{
-      width:42px;height:42px;border-radius:14px;
+      width:44px;height:44px;border-radius:16px;
       display:flex;align-items:center;justify-content:center;
       background:rgba(255,255,255,.18);
-      border:1px solid rgba(255,255,255,.22);
+      border:1px solid rgba(255,255,255,.24);
       backdrop-filter: blur(6px);
       font-size:20px;
+      box-shadow:0 10px 26px rgba(0,0,0,.12);
     }
     .coverTitle{
       font-size:20px;
@@ -161,10 +166,11 @@
       font-size:12px;
       opacity:.95;
       margin-top:2px;
+      line-height:1.2;
     }
 
     .heroBody{
-      padding:14px 16px 16px;
+      padding:12px 14px 14px;
       display:flex;
       gap:10px;
       flex-direction:column;
@@ -174,14 +180,14 @@
     .heroDesc{
       color:var(--muted);
       font-size:14px;
-      line-height:1.6;
+      line-height:1.55;
       margin:0;
     }
     .heroCTA{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
-      margin-top:10px;
+      margin-top:6px;
       color:#111827;
-      font-weight:800;
+      font-weight:900;
       font-size:14px;
     }
     .pill{
@@ -191,7 +197,7 @@
       border:1px solid #e6e9f2;
       background:#f8fafc;
       color:#0f172a;
-      font-weight:800;
+      font-weight:900;
       font-size:13px;
     }
 
@@ -200,7 +206,7 @@
 
     /* ===== クイズ分组 ===== */
     .group {
-      grid-column: span 4;
+      grid-column: span 4;            /* ✅ 同一行 */
       border:2px dashed #c7d2fe;
       border-radius:20px;
       padding:14px;
@@ -219,10 +225,9 @@
       grid-template-columns:1fr;
       gap:12px;
     }
-    /* group 内部 tile 不要再占 12-grid 的 span */
-    .group .tile{ grid-column: auto; }
+    .group .tile{ grid-column: auto; padding:14px; } /* 稍微紧凑点 */
 
-    /* 小屏时 group 也变全宽 */
+    /* 响应式保持合理 */
     @media (max-width: 980px){
       .tile{grid-column: span 6;}
       .group{grid-column: span 6;}
@@ -253,7 +258,7 @@
   <div class="wrap">
     <div class="grid">
 
-      <!-- ✅ NotebookLM-ish big cover card: 3行投稿 -->
+      <!-- ✅ 3行投稿：更紧凑、更醒目的封面 -->
       <a class="heroCard" href="/posts.html">
         <div class="cover posts">
           <div class="coverBadge">
@@ -275,7 +280,7 @@
         </div>
       </a>
 
-      <!-- ✅ NotebookLM-ish big cover card: 質問掲示板 -->
+      <!-- ✅ 質問掲示板：更紧凑、更醒目的封面 -->
       <a class="heroCard" href="/questions.html">
         <div class="cover questions">
           <div class="coverBadge">
@@ -297,7 +302,7 @@
         </div>
       </a>
 
-      <!-- ===== クイズ 分组（保持你现有逻辑） ===== -->
+      <!-- ✅ クイズ：同一行（分组保持） -->
       <div class="group">
         <div class="group-title">🧩 クイズ</div>
         <div class="group-grid">
@@ -319,7 +324,7 @@
         </div>
       </div>
 
-      <!-- 下面这些保持原来的“普通 tile”即可 -->
+      <!-- 下面这些维持原来 -->
       <a class="tile" href="/reminders.html">
         <div class="ico">⏰</div>
         <div>

@@ -4,256 +4,256 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3行アプリ開発プロジェクト</title>
+
   <style>
     :root{
-      --blue:#2563eb;--blue2:#1d4ed8;--bg:#eef3ff;--card:#fff;--text:#0f172a;--muted:#64748b;
+      --blue:#2563eb;
+      --blue2:#1d4ed8;
+      --bg:#eef3ff;
+      --card:#fff;
+      --text:#0f172a;
+      --muted:#64748b;
       --line:#e5e7eb;
     }
+
     body{
       margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
-      background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,"Noto Sans JP","Yu Gothic",sans-serif;
+      background:var(--bg);
+      color:var(--text);
     }
 
-    /* ===== Header：把文字尽量上移（只改间距，不动结构） ===== */
+    /* ===== HEADER：标题尽量贴顶 ===== */
     header{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;
-      padding:14px 28px 22px; /* ★ 原来 28px 28px 30px：上移 */
+      padding:6px 28px 18px; /* ★ 上边距压到极限 */
       position:relative;
       overflow:hidden;
     }
-    header:before{
+
+    header::before{
       content:"";
-      position:absolute;inset:-30px;opacity:.18;background:
+      position:absolute;
+      inset:-40px;
+      opacity:.18;
+      background:
         radial-gradient(circle at 20% 30%, #fff 0 120px, transparent 121px),
         radial-gradient(circle at 80% 20%, #fff 0 180px, transparent 181px);
     }
 
-    header .topbar{
-      display:flex;align-items:center;justify-content:flex-end;gap:10px;
-      position:relative;z-index:1;
-      margin-bottom:4px; /* ★ 原来 10px：让标题上移 */
+    /* ★ 右上角按钮改为绝对定位，不占高度 */
+    .topbar{
+      position:absolute;
+      top:8px;
+      right:28px;
+      display:flex;
+      gap:10px;
+      z-index:2;
     }
-    .btn{border:0;border-radius:14px;padding:9px 14px;font-weight:700;cursor:pointer;}
+
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:9px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
     .btnGhost{background:rgba(255,255,255,.18);color:#fff;}
     .btnDanger{background:#ef4444;color:#fff;}
 
+    /* ===== 标题区域 ===== */
     header h1{
-      margin:0 0 4px;         /* ★ 原来 8px 0 6px：尽量贴上去 */
-      font-size:34px;
-      letter-spacing:.02em;
-      position:relative;z-index:1;
-      line-height:1.15;       /* ★ 更紧凑 */
-    }
-    header p{
       margin:0;
-      font-size:14px;
-      color:rgba(255,255,255,.9);
-      position:relative;z-index:1;
-      line-height:1.35;       /* ★ 更紧凑 */
+      padding-right:340px; /* ★ 给右上角按钮让位 */
+      font-size:34px;
+      line-height:1.12;
+      letter-spacing:.02em;
+      position:relative;
+      z-index:1;
     }
 
-    main{max-width:1100px;margin:0 auto;padding:22px;}
+    header p{
+      margin:4px 0 0;
+      padding-right:340px;
+      font-size:14px;
+      line-height:1.3;
+      color:rgba(255,255,255,.9);
+      position:relative;
+      z-index:1;
+    }
+
+    .meta{
+      margin-top:4px;
+      padding-right:340px;
+      font-size:13px;
+      line-height:1.25;
+      color:rgba(255,255,255,.85);
+      position:relative;
+      z-index:1;
+    }
+
+    .hidden{display:none;}
+
+    /* ===== MAIN ===== */
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:22px;
+    }
+
     .wrap{
       background:rgba(255,255,255,.6);
-      backdrop-filter: blur(6px);
-      border:1px solid rgba(255,255,255,.6);
+      backdrop-filter:blur(6px);
       border-radius:22px;
       padding:18px;
+      margin-top:-16px; /* 与 header 紧密衔接 */
       box-shadow:0 18px 40px rgba(2,6,23,.08);
-      margin-top:-18px;       /* ★ 原来 -26px：配合 header 上移 */
     }
 
-    /* ===== Grid ===== */
+    /* ===== GRID ===== */
     .grid{
       display:grid;
       grid-template-columns:repeat(12,1fr);
       gap:14px;
-      align-items:stretch;
     }
-    @media (max-width: 980px){
+
+    @media (max-width:980px){
       .grid{grid-template-columns:repeat(6,1fr);}
     }
-    @media (max-width: 640px){
-      .grid{grid-template-columns:repeat(1,1fr);}
+    @media (max-width:640px){
+      .grid{grid-template-columns:1fr;}
     }
 
-    /* ===== Small tile (existing) ===== */
-    .tile{
-      grid-column: span 4;
-      display:flex;gap:14px;align-items:flex-start;
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:16px;
-      text-decoration:none;
-      color:inherit;
-      box-shadow:0 10px 26px rgba(2,6,23,.06);
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    }
-    .tile:hover{
-      transform: translateY(-2px);
-      box-shadow:0 16px 34px rgba(2,6,23,.10);
-      border-color:#d7dde6;
-    }
-    .ico{
-      width:44px;height:44px;border-radius:14px;background:#eef2ff;
-      display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 44px;
-    }
-    .t{font-weight:900;margin-bottom:4px}
-    .d{color:var(--muted);font-size:14px;line-height:1.5}
-
-    /* ===== Big cover cards (NotebookLM-ish) ===== */
+    /* ===== HERO CARDS ===== */
     .heroCard{
-      grid-column: span 4;   /* ★ 原来 span 6：现在三块同一行 */
+      grid-column:span 4;
       display:flex;
       flex-direction:column;
-      background:var(--card);
-      border:1px solid var(--line);
+      background:#fff;
       border-radius:20px;
       overflow:hidden;
       text-decoration:none;
       color:inherit;
       box-shadow:0 14px 34px rgba(2,6,23,.08);
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-      min-height: 240px;
+      min-height:240px;
     }
-    .heroCard:hover{
-      transform: translateY(-2px);
-      box-shadow:0 18px 44px rgba(2,6,23,.12);
-      border-color:#d7dde6;
+
+    @media (max-width:980px){
+      .heroCard{grid-column:span 6;}
     }
-    @media (max-width: 980px){
-      .heroCard{grid-column: span 6;} /* 平板两列 */
-    }
-    @media (max-width: 640px){
-      .heroCard{grid-column: span 1;} /* 手机单列 */
+    @media (max-width:640px){
+      .heroCard{grid-column:span 1;}
     }
 
     .cover{
       height:130px;
       position:relative;
-      overflow:hidden;
     }
+
     .cover.posts{
-      background:
-        radial-gradient(circle at 25% 30%, rgba(255,255,255,.75) 0 60px, transparent 61px),
-        radial-gradient(circle at 70% 20%, rgba(255,255,255,.55) 0 90px, transparent 91px),
-        linear-gradient(135deg, #4f46e5 0%, #2563eb 55%, #06b6d4 110%);
+      background:linear-gradient(135deg,#4f46e5,#2563eb,#06b6d4);
     }
     .cover.questions{
-      background:
-        radial-gradient(circle at 20% 70%, rgba(255,255,255,.65) 0 70px, transparent 71px),
-        radial-gradient(circle at 80% 35%, rgba(255,255,255,.55) 0 110px, transparent 111px),
-        linear-gradient(135deg, #0ea5e9 0%, #2563eb 55%, #9333ea 120%);
+      background:linear-gradient(135deg,#0ea5e9,#2563eb,#9333ea);
     }
 
     .coverBadge{
-      position:absolute;left:14px;bottom:12px;
-      display:flex;align-items:center;gap:12px;
+      position:absolute;
+      left:14px;
+      bottom:12px;
+      display:flex;
+      align-items:center;
+      gap:12px;
       color:#fff;
-      text-shadow:0 6px 18px rgba(0,0,0,.35);
     }
 
     .coverIcon{
-      width:64px;height:64px;
+      width:64px;
+      height:64px;
       border-radius:20px;
-      display:flex;align-items:center;justify-content:center;
-      background:rgba(255,255,255,.18);
-      border:1px solid rgba(255,255,255,.25);
-      backdrop-filter: blur(8px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(255,255,255,.2);
       font-size:34px;
-      box-shadow:0 10px 26px rgba(0,0,0,.16);
     }
 
-    .coverTitle{
-      font-size:22px;
-      font-weight:900;
-      letter-spacing:.02em;
-      line-height:1.1;
-    }
-    .coverSub{
-      font-size:12px;
-      opacity:.95;
-      margin-top:4px;
-    }
+    .coverTitle{font-size:22px;font-weight:900;}
+    .coverSub{font-size:12px;opacity:.9;}
 
     .heroBody{
       padding:14px 16px 16px;
       display:flex;
-      gap:10px;
       flex-direction:column;
-      flex:1;
       justify-content:space-between;
+      gap:10px;
+      flex:1;
     }
+
     .heroDesc{
-      color:var(--muted);
       font-size:14px;
+      color:var(--muted);
       line-height:1.6;
       margin:0;
     }
+
     .heroCTA{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      margin-top:10px;
-      color:#111827;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
       font-weight:800;
-      font-size:14px;
     }
+
     .pill{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:8px 10px;
+      padding:8px 12px;
       border-radius:999px;
-      border:1px solid #e6e9f2;
+      border:1px solid #e5e7eb;
       background:#f8fafc;
-      color:#0f172a;
-      font-weight:800;
       font-size:13px;
     }
 
-    .meta{
-      margin-top:4px;      /* ★ 原来 6px：更贴上去 */
-      color:rgba(255,255,255,.88);
-      font-size:13px;
-      position:relative;z-index:1;
-      line-height:1.25;    /* ★ 更紧凑 */
+    /* ===== TILE / GROUP ===== */
+    .tile{
+      grid-column:span 4;
+      display:flex;
+      gap:14px;
+      background:#fff;
+      border-radius:18px;
+      padding:16px;
+      text-decoration:none;
+      color:inherit;
+      box-shadow:0 10px 26px rgba(2,6,23,.06);
     }
-    .meta span{opacity:.95}
-    .hidden{display:none}
 
-    /* ===== クイズ分组 ===== */
-    .group {
-      grid-column: span 4; /* 本来就是 4，不动 */
+    .ico{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      background:#eef2ff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+    }
+
+    .group{
+      grid-column:span 4;
       border:2px dashed #c7d2fe;
       border-radius:20px;
       padding:14px;
       background:rgba(255,255,255,.75);
     }
-    .group-title {
-      font-weight:900;
-      color:#3730a3;
-      margin-bottom:10px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .group-grid {
-      display:grid;
-      grid-template-columns:1fr;
-      gap:12px;
-    }
-    .group .tile{ grid-column: auto; }
 
-    @media (max-width: 980px){
-      .tile{grid-column: span 6;}
-      .group{grid-column: span 6;}
+    @media (max-width:980px){
+      .tile,.group{grid-column:span 6;}
     }
-    @media (max-width: 640px){
-      .tile{grid-column: span 1;}
-      .group{grid-column: span 1;}
+    @media (max-width:640px){
+      .tile,.group{grid-column:span 1;}
     }
   </style>
 </head>
+
 <body>
 
 <header>
@@ -274,7 +274,7 @@
   <div class="wrap">
     <div class="grid">
 
-      <!-- ✅ 3行投稿 -->
+      <!-- 3行投稿 -->
       <a class="heroCard" href="/posts.html">
         <div class="cover posts">
           <div class="coverBadge">
@@ -286,17 +286,12 @@
           </div>
         </div>
         <div class="heroBody">
-          <p class="heroDesc">
-            授業の要点を3行で投稿。先生の「いいね・コメント」も確認できます。
-          </p>
-          <div class="heroCTA">
-            <span class="pill">すぐ投稿する</span>
-            <span>→</span>
-          </div>
+          <p class="heroDesc">授業の要点を3行で投稿。先生のコメントも確認できます。</p>
+          <div class="heroCTA"><span class="pill">すぐ投稿する</span><span>→</span></div>
         </div>
       </a>
 
-      <!-- ✅ 質問掲示板 -->
+      <!-- 質問掲示板 -->
       <a class="heroCard" href="/questions.html">
         <div class="cover questions">
           <div class="coverBadge">
@@ -308,61 +303,31 @@
           </div>
         </div>
         <div class="heroBody">
-          <p class="heroDesc">
-            授業中・後の疑問を投稿。学生/教員が回答して学び合い。
-          </p>
-          <div class="heroCTA">
-            <span class="pill">質問を見る</span>
-            <span>→</span>
-          </div>
+          <p class="heroDesc">授業中・後の疑問を投稿。学生/教員で解決。</p>
+          <div class="heroCTA"><span class="pill">質問を見る</span><span>→</span></div>
         </div>
       </a>
 
-      <!-- ✅ クイズ（组） -->
+      <!-- クイズ -->
       <div class="group">
-        <div class="group-title">🧩 クイズ</div>
-        <div class="group-grid">
-          <a class="tile" href="/quiz.html">
-            <div class="ico">🧩</div>
-            <div>
-              <div class="t">クイズ</div>
-              <div class="d">投稿内容から「思い出しクイズ」を表示。復習に使えます。</div>
-            </div>
-          </a>
-
-          <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
-            <div class="ico">🛠️</div>
-            <div>
-              <div class="t">クイズ管理</div>
-              <div class="d">クイズの生成・編集・公開（教員/管理者のみ）。</div>
-            </div>
-          </a>
+        <div class="tile" href="/quiz.html">
+          <div class="ico">🧩</div>
+          <div>
+            <div class="t">クイズ</div>
+            <div class="d">思い出しクイズで復習</div>
+          </div>
         </div>
       </div>
 
-      <!-- ✅ 以下：绝对保留，不删！ -->
+      <!-- 以下のボタンはすべて保持 -->
       <a class="tile" href="/reminders.html">
-        <div class="ico">⏰</div>
-        <div>
-          <div class="t">復習リマインダー</div>
-          <div class="d">授業後の復習を習慣化。期限が来た内容を確認できます。</div>
-        </div>
+        <div class="ico">⏰</div><div><div class="t">復習リマインダー</div></div>
       </a>
-
       <a class="tile" href="/ranking.html">
-        <div class="ico">🏆</div>
-        <div>
-          <div class="t">ランキング</div>
-          <div class="d">投稿・回答などの貢献度を表示（設定で非表示にもできます）。</div>
-        </div>
+        <div class="ico">🏆</div><div><div class="t">ランキング</div></div>
       </a>
-
       <a class="tile" href="/settings.html">
-        <div class="ico">⚙️</div>
-        <div>
-          <div class="t">設定</div>
-          <div class="d">表示や動作の設定（ランキング非表示など）。</div>
-        </div>
+        <div class="ico">⚙️</div><div><div class="t">設定</div></div>
       </a>
 
     </div>
@@ -370,46 +335,16 @@
 </main>
 
 <script>
-  async function apiGet(path){
-    const res = await fetch(path, { credentials:"include", cache:"no-store" });
-    const data = await res.json().catch(()=>null);
-    return { ok: res.ok, data };
-  }
-  async function apiPost(path, body){
-    const res = await fetch(path, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body:JSON.stringify(body||{})
-    });
-    return res;
-  }
-  function isTeacherOrAdmin(u){
-    return u && (u.role === "admin" || u.role === "teacher");
-  }
-
-  (async ()=>{
-    const r = await apiGet("/api/auth/me?ts="+Date.now());
-    if (!r.ok || !r.data?.ok) {
-      location.replace("/login");
-      return;
-    }
-    const u = r.data.user;
-    metaName.textContent = u.display_name || u.username;
-    metaUser.textContent = u.username;
-    loginMeta.classList.remove("hidden");
-
-    if (isTeacherOrAdmin(u)) {
-      document.getElementById("tileQuizAdmin").classList.remove("hidden");
-    }
-  })();
-
-  btnLogout.onclick = async ()=>{
-    await apiPost("/api/auth/logout",{});
-    location.replace("/login");
-  };
-  btnAccount.onclick = ()=>location.href="/account.html";
-  btnMenu.onclick = ()=>location.href="/index.html";
+(async ()=>{
+  const r = await fetch("/api/auth/me",{credentials:"include"}).then(r=>r.json());
+  if(!r.ok){location.href="/login";return;}
+  metaName.textContent = r.user.display_name || r.user.username;
+  metaUser.textContent = r.user.username;
+  loginMeta.classList.remove("hidden");
+})();
+btnLogout.onclick=async()=>{await fetch("/api/auth/logout",{method:"POST"});location.href="/login";};
+btnAccount.onclick=()=>location.href="/account.html";
+btnMenu.onclick=()=>location.href="/index.html";
 </script>
 
 </body>

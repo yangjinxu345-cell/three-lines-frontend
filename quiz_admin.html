@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>クイズ草稿管理</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e5e7eb;
+      --pri:#2563eb;--pri2:#1d4ed8;--shadow:0 10px 30px rgba(2,6,23,.08);--r:18px;
+      --ok:#16a34a;--bad:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;color:var(--text)}
+    header{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    a{color:#fff;text-decoration:none;font-weight:900}
+    h1{margin:8px 0 0;font-size:22px}
+    .muted{color:var(--muted);font-size:13px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    main .wrap{padding-top:14px}
+    .grid{display:grid;grid-template-columns: 420px 1fr; gap:12px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+
+    .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .barLeft{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .barRight{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    select,input{border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;background:#fff}
+    input{min-width:220px}
+    .btn{border:0;border-radius:12px;padding:9px 12px;font-weight:900;cursor:pointer}
+    .btn.primary{background:var(--pri);color:#fff}
+    .btn.gray{background:#475569;color:#fff}
+    .btn.ok{background:var(--ok);color:#fff}
+    .btn.bad{background:var(--bad);color:#fff}
+    .btn.ghost{background:#eef2ff;color:#1e40af}
+
+    .list{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto;padding-right:4px}
+    .item{border:1px solid var(--border);border-radius:14px;padding:10px;cursor:pointer;background:#fff}
+    .item:hover{background:#f8fafc}
+    .item.active{border-color:#93c5fd;background:#eef6ff}
+    .row1{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:900;font-size:12px;color:#334155}
+    .q{margin-top:6px;font-weight:900;font-size:13px}
+    .meta{margin-top:4px;color:var(--muted);font-size:12px}
+
+    label{display:block;font-weight:900;margin-top:10px;font-size:12px;color:#334155}
+    textarea{width:100%;min-height:80px;border:1px solid var(--border);border-radius:12px;padding:10px;font-size:13px;resize:vertical}
+    textarea:focus,input:focus,select:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+    .two{display:grid;grid-template-columns: 1fr 1fr; gap:10px}
+    @media (max-width: 720px){ .two{grid-template-columns:1fr} }
+
+    .hint{font-size:12px;color:var(--muted);margin-top:8px}
+    .err{color:#b91c1c;font-size:13px;white-space:pre-wrap}
+    .okmsg{color:#166534;font-size:13px;white-space:pre-wrap}
+    .hr{height:1px;background:#eef2f7;margin:12px 0}
+    .small{font-size:12px;color:var(--muted)}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div>
+      <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
+      <h1>クイズ草稿管理（AI生成 → 確認 → 公開）</h1>
+      <div class="muted" id="me">ログイン情報：読み込み中…</div>
+    </div>
+    <div class="barRight">
+      <a class="btn ghost" href="/quizzes.html" style="text-decoration:none;display:inline-block">学生側クイズへ</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap grid">
+
+    <!-- Left: list -->
+    <div class="card">
+      <div class="bar">
+        <div class="barLeft">
+          <select id="status">
+            <option value="">すべて</option>
+            <option value="draft">draft</option>
+            <option value="reviewing">reviewing</option>
+            <option value="approved">approved</option>
+            <option value="rejected">rejected</option>
+            <option value="published">published</option>
+          </select>
+          <input id="q" placeholder="検索（問題/選択肢/テーマ/名前）" />
+        </div>
+        <div class="barRight">
+          <button class="btn gray" id="prev">←</button>
+          <span class="small" id="page">0-0 / 0</span>
+          <button class="btn gray" id="next">→</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="bar">
+        <div class="barLeft">
+          <input id="genPostId" class="mono" placeholder="AI生成: post_id (例: 16)" style="min-width:180px" />
+          <button class="btn primary" id="btnGenerate">AIで草稿生成</button>
+        </div>
+        <div class="barRight">
+          <button class="btn ghost" id="btnReload">更新</button>
+        </div>
+      </div>
+
+      <div class="hint">※ 生成は teacher/admin のみ。最大10件/回。</div>
+      <div class="err" id="listErr" style="display:none"></div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <!-- Right: editor -->
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:900">編集</div>
+          <div class="small" id="selMeta">草稿を選択してください。</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn gray" id="btnSave" disabled>保存</button>
+          <button class="btn ok" id="btnPublish" disabled>公開</button>
+          <button class="btn bad" id="btnReject" disabled>却下</button>
+        </div>
+      </div>
+
+      <div class="err" id="editErr" style="display:none"></div>
+      <div class="okmsg" id="editOk" style="display:none"></div>
+
+      <div class="hr"></div>
+
+      <div class="small" id="postInfo"></div>
+
+      <label>ステータス</label>
+      <select id="f_status">
+        <option value="draft">draft</option>
+        <option value="reviewing">reviewing</option>
+        <option value="approved">approved</option>
+        <option value="rejected">rejected</option>
+        <option value="published">published</option>
+      </select>
+
+      <label>難易度（1〜3）</label>
+      <select id="difficulty">
+        <option value="1">1（易）</option>
+        <option value="2">2（中）</option>
+        <option value="3">3（難）</option>
+      </select>
+
+      <label>問題文</label>
+      <textarea id="question"></textarea>
+
+      <div class="two">
+        <div>
+          <label>選択肢 A</label>
+          <input id="a" />
+        </div>
+        <div>
+          <label>選択肢 B</label>
+          <input id="b" />
+        </div>
+        <div>
+          <label>選択肢 C</label>
+          <input id="c" />
+        </div>
+        <div>
+          <label>選択肢 D</label>
+          <input id="d" />
+        </div>
+      </div>
+
+      <label>正解</label>
+      <select id="correct">
+        <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+      </select>
+
+      <label>解説</label>
+      <textarea id="explanation" placeholder="1〜3文程度"></textarea>
+
+      <label>レビュー備考（却下理由など）</label>
+      <input id="review_note" placeholder="例：選択肢が紛らわしいので修正してください" />
+
+      <div class="hint">
+        公開すると <span class="mono">quiz_items</span> にコピーされ、草稿は <span class="mono">published</span> になります。
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+async function api(path,opt={}){
+  const res = await fetch(path, { credentials:"include", cache:"no-store", ...opt });
+  const text = await res.text();
+  let data; try{data=JSON.parse(text)}catch{data=text}
+  if(!res.ok) throw new Error("HTTP "+res.status+" "+text);
+  if(data && typeof data==="object" && data.ok===false) throw new Error(data.error||"API error");
+  return data;
+}
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+let OFFSET=0;
+const LIMIT=20;
+let TOTAL=0;
+let ITEMS=[];
+let SELECTED=null;
+
+async function loadMe(){
+  try{
+    const r = await api("/api/auth/me?ts="+Date.now());
+    const u = r.user;
+    if(!u){ document.getElementById("me").textContent="未ログイン"; return; }
+    document.getElementById("me").textContent = `ログイン：${u.display_name || u.username}（${u.role}）`;
+  }catch{ document.getElementById("me").textContent="未ログイン"; }
+}
+
+function setListErr(msg){
+  const el=document.getElementById("listErr");
+  el.style.display = msg ? "" : "none";
+  el.textContent = msg || "";
+}
+function setEditErr(msg){
+  const el=document.getElementById("editErr");
+  el.style.display = msg ? "" : "none";
+  el.textContent = msg || "";
+}
+function setEditOk(msg){
+  const el=document.getElementById("editOk");
+  el.style.display = msg ? "" : "none";
+  el.textContent = msg || "";
+}
+
+function renderList(){
+  const list=document.getElementById("list");
+  list.innerHTML = "";
+
+  for(const it of ITEMS){
+    const div=document.createElement("div");
+    div.className = "item" + (SELECTED?.id===it.id ? " active" : "");
+    div.onclick = ()=>selectItem(it.id);
+
+    div.innerHTML = `
+      <div class="row1">
+        <span class="badge">#${it.id}</span>
+        <span class="badge">${esc(it.status||"-")}</span>
+        <span class="badge">${esc(it.lesson_date||"-")}</span>
+      </div>
+      <div class="q">${esc(it.question||"")}</div>
+      <div class="meta">👤 ${esc(it.post_name||it.name||"-")} ｜ 🏫 ${esc(it.class_name||"-")} ｜ 📘 ${esc(it.topic||"-")}</div>
+    `;
+    list.appendChild(div);
+  }
+}
+
+function updatePageInfo(){
+  const from = Math.min(OFFSET+1, TOTAL);
+  const to = Math.min(OFFSET + LIMIT, TOTAL);
+  document.getElementById("page").textContent = `${from}-${to} / ${TOTAL}`;
+  document.getElementById("prev").disabled = OFFSET<=0;
+  document.getElementById("next").disabled = OFFSET+LIMIT>=TOTAL;
+}
+
+async function loadList(){
+  setListErr("");
+  const status = document.getElementById("status").value;
+  const q = document.getElementById("q").value.trim();
+
+  const url = new URL(location.origin + "/api/quiz/drafts");
+  if(status) url.searchParams.set("status", status);
+  if(q) url.searchParams.set("q", q);
+  url.searchParams.set("limit", String(LIMIT));
+  url.searchParams.set("offset", String(OFFSET));
+
+  const r = await api(url.pathname + "?" + url.searchParams.toString());
+  ITEMS = r.items || [];
+  TOTAL = r.total || 0;
+
+  renderList();
+  updatePageInfo();
+}
+
+async function selectItem(id){
+  setEditErr("");
+  setEditOk("");
+  SELECTED = null;
+  renderList();
+
+  const r = await api(`/api/quiz/drafts/${id}?ts=`+Date.now());
+  SELECTED = r.item;
+  renderList();
+
+  // enable buttons
+  document.getElementById("btnSave").disabled = false;
+  document.getElementById("btnPublish").disabled = false;
+  document.getElementById("btnReject").disabled = false;
+
+  // fill
+  document.getElementById("selMeta").textContent = `選択中：#${SELECTED.id}（post_id=${SELECTED.post_id}）`;
+  document.getElementById("f_status").value = SELECTED.status || "draft";
+  document.getElementById("difficulty").value = String(SELECTED.difficulty || 2);
+  document.getElementById("question").value = SELECTED.question || "";
+  document.getElementById("a").value = SELECTED.choice_a || "";
+  document.getElementById("b").value = SELECTED.choice_b || "";
+  document.getElementById("c").value = SELECTED.choice_c || "";
+  document.getElementById("d").value = SELECTED.choice_d || "";
+  document.getElementById("correct").value = (SELECTED.correct_choice || "A").toUpperCase();
+  document.getElementById("explanation").value = SELECTED.explanation || "";
+  document.getElementById("review_note").value = SELECTED.review_note || "";
+
+  // show post info for reference
+  document.getElementById("postInfo").innerHTML = `
+    <div class="small">
+      <b>投稿情報</b><br/>
+      👤 ${esc(SELECTED.post_name||"-")} ｜ 🏫 ${esc(SELECTED.class_name||"-")} ｜ 📅 ${esc(SELECTED.lesson_date||"-")} ｜ 📘 ${esc(SELECTED.topic||"-")}<br/>
+      1) ${esc(SELECTED.line1||"")}<br/>
+      2) ${esc(SELECTED.line2||"")}<br/>
+      3) ${esc(SELECTED.line3||"")}
+    </div>
+  `;
+}
+
+function collectPayload(){
+  return {
+    status: document.getElementById("f_status").value,
+    difficulty: Number(document.getElementById("difficulty").value),
+    question: document.getElementById("question").value,
+    choice_a: document.getElementById("a").value,
+    choice_b: document.getElementById("b").value,
+    choice_c: document.getElementById("c").value,
+    choice_d: document.getElementById("d").value,
+    correct_choice: document.getElementById("correct").value,
+    explanation: document.getElementById("explanation").value,
+    review_note: document.getElementById("review_note").value
+  };
+}
+
+async function save(){
+  if(!SELECTED) return;
+  setEditErr(""); setEditOk("");
+  try{
+    const payload = collectPayload();
+    await api(`/api/quiz/drafts/${SELECTED.id}`,{
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    setEditOk("保存しました。");
+    await selectItem(SELECTED.id);
+    await loadList();
+  }catch(e){
+    setEditErr(String(e.message||e));
+  }
+}
+
+async function publish(){
+  if(!SELECTED) return;
+  setEditErr(""); setEditOk("");
+  try{
+    // 先保存（内容が最新になるように）
+    await save();
+    const r = await api(`/api/quiz/drafts/${SELECTED.id}/publish`, { method:"POST" });
+    setEditOk(`公開しました。quiz_item_id=${r.quiz_item_id}`);
+    await loadList();
+    await selectItem(SELECTED.id);
+  }catch(e){
+    setEditErr(String(e.message||e));
+  }
+}
+
+async function reject(){
+  if(!SELECTED) return;
+  setEditErr(""); setEditOk("");
+  try{
+    const payload = collectPayload();
+    payload.status = "rejected";
+    await api(`/api/quiz/drafts/${SELECTED.id}`,{
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    setEditOk("却下しました。");
+    await loadList();
+    await selectItem(SELECTED.id);
+  }catch(e){
+    setEditErr(String(e.message||e));
+  }
+}
+
+async function generate(){
+  setListErr("");
+  const v = document.getElementById("genPostId").value.trim();
+  if(!v){ setListErr("post_id を入力してください"); return; }
+  const ids = v.split(",").map(x=>parseInt(x.trim(),10)).filter(n=>Number.isFinite(n)&&n>0);
+  if(ids.length===0){ setListErr("post_id が不正です"); return; }
+  if(ids.length>10){ setListErr("最大10件までです"); return; }
+
+  try{
+    const r = await api("/api/quiz/drafts/generate",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ post_ids: ids })
+    });
+    // 成功/失敗を表示
+    const created = r.created?.length || 0;
+    const errors = r.errors?.length || 0;
+    setEditOk(`生成完了：created=${created}, errors=${errors}`);
+    OFFSET = 0;
+    await loadList();
+  }catch(e){
+    setListErr(String(e.message||e));
+  }
+}
+
+// wiring
+document.getElementById("btnReload").onclick = ()=>{ OFFSET=0; loadList().catch(e=>setListErr(String(e.message||e))); };
+document.getElementById("prev").onclick = ()=>{ OFFSET = Math.max(0, OFFSET-LIMIT); loadList().catch(e=>setListErr(String(e.message||e))); };
+document.getElementById("next").onclick = ()=>{ OFFSET = OFFSET+LIMIT; loadList().catch(e=>setListErr(String(e.message||e))); };
+
+document.getElementById("status").onchange = ()=>{ OFFSET=0; loadList().catch(e=>setListErr(String(e.message||e))); };
+let t=null;
+document.getElementById("q").addEventListener("input", ()=>{
+  clearTimeout(t);
+  t=setTimeout(()=>{ OFFSET=0; loadList().catch(e=>setListErr(String(e.message||e))); }, 200);
+});
+
+document.getElementById("btnSave").onclick = save;
+document.getElementById("btnPublish").onclick = publish;
+document.getElementById("btnReject").onclick = reject;
+document.getElementById("btnGenerate").onclick = generate;
+
+(async ()=>{
+  await loadMe();
+  await loadList();
+})();
+</script>
+</body>
+</html>

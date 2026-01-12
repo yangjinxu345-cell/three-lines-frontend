@@ -6,39 +6,54 @@
   <title>3行投稿（一覧）</title>
   <style>
     :root{
-      --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
-      --pri:#2563eb; --pri2:#1d4ed8;
+      --bg:#f5f7fb;
+      --card:#fff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --pri:#2563eb;
+      --pri2:#1d4ed8;
       --shadow:0 10px 30px rgba(2,6,23,.08);
       --r:18px;
+      --row:#ffffff;
+      --rowHover:#f8fafc;
+      --rowActive:#eef6ff;
     }
-    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;color:var(--text)}
-    header{background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:var(--bg);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+      color:var(--text);
+    }
+
+    header{
+      background:linear-gradient(135deg,var(--pri),var(--pri2));
+      color:#fff;
+    }
+    .wrap{max-width:1160px;margin:0 auto;padding:18px}
     .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     a{color:#fff;text-decoration:none;font-weight:800}
     h1{margin:8px 0 0;font-size:26px}
+    .muted{color:var(--muted);font-size:13px}
+
     main .wrap{padding-top:14px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      padding:16px;
+      margin-bottom:14px
+    }
     .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .btn{border:0;border-radius:14px;padding:10px 14px;font-weight:900;cursor:pointer}
     .btn.primary{background:var(--pri);color:#fff}
     .btn.ghost{background:#eef2ff;color:#1e40af}
     .btn.gray{background:#475569;color:#fff}
-    .muted{color:var(--muted);font-size:13px}
-    .list{display:flex;flex-direction:column;gap:12px}
-    .post{padding:14px;border-radius:16px;border:1px solid var(--border);background:#fff}
-    .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:#334155;font-size:13px}
-    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0}
-    .topic{margin-top:10px;font-weight:900}
-    ol{margin:10px 0 0 20px}
-    li{margin:6px 0;line-height:1.55}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+
     .hr{height:1px;background:#eef2f7;margin:12px 0}
-    .comments{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#fbfdff;border:1px solid #e5e7eb}
-    textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;min-height:70px}
-    textarea:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
-    .inline{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .err{color:#b91c1c;font-size:13px}
 
     /* ===== Filter ===== */
     .filterWrap{margin-top:10px}
@@ -79,15 +94,87 @@
     }
     .smallBtn{border:0;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer}
     .smallBtn.clear{background:#eef2ff;color:#1e40af}
-    @media (max-width: 860px){ .filterGrid{grid-template-columns:1fr 1fr} }
+    @media (max-width: 900px){ .filterGrid{grid-template-columns:1fr 1fr} }
     @media (max-width: 520px){ .filterGrid{grid-template-columns:1fr} }
 
-    /* ===== YouTube-like icon buttons ===== */
+    /* ===== Table ===== */
+    .tableWrap{
+      border:1px solid var(--border);
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .thead, .trow{
+      display:grid;
+      grid-template-columns: 160px 140px 120px 1.3fr 180px;
+      align-items:center;
+    }
+    .thead{
+      background:#f8fafc;
+      border-bottom:1px solid var(--border);
+      font-size:12px;
+      color:#334155;
+      font-weight:900;
+      letter-spacing:.02em;
+    }
+    .th, .td{padding:10px 12px}
+    .th{white-space:nowrap}
+    .trow{
+      background:var(--row);
+      border-bottom:1px solid #f1f5f9;
+      cursor:pointer;
+    }
+    .trow:hover{background:var(--rowHover)}
+    .trow.active{background:var(--rowActive)}
+    .td{
+      font-size:13px;
+      color:#0f172a;
+      min-width:0;
+    }
+    .cellMuted{color:var(--muted);font-size:12px}
+    .ellipsis{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .topicStrong{font-weight:900}
+    .preview{
+      display:block;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    @media (max-width: 980px){
+      .thead, .trow{
+        grid-template-columns: 150px 120px 110px 1fr 160px;
+      }
+    }
+    @media (max-width: 760px){
+      .thead{display:none;}
+      .trow{
+        grid-template-columns: 1fr 160px;
+        grid-template-areas:
+          "main actions";
+      }
+      .td{padding:10px 12px}
+      .td.colName, .td.colClass, .td.colDate{display:none;}
+      .td.colTopic{grid-area:main}
+      .td.colActions{grid-area:actions}
+    }
+
+    /* ===== Icon buttons (YouTube-ish) ===== */
     .iconBtn{
       display:inline-flex;
       align-items:center;
-      gap:8px;
-      padding:8px 12px;
+      gap:6px;
+      padding:8px 10px;
       border-radius:999px;
       border:1px solid #e2e8f0;
       background:#fff;
@@ -98,28 +185,110 @@
     }
     .iconBtn:hover{background:#f8fafc}
     .iconBtn svg{width:18px;height:18px}
-    .iconBtn .num{font-size:13px;color:#0f172a;min-width:10px}
-    .iconBtn.on{
-      background:#e0ecff;
-      border-color:#b6d2ff;
-      color:#1e40af;
-    }
+    .iconBtn .num{font-size:12px;color:#0f172a;min-width:10px}
+    .iconBtn.on{background:#e0ecff;border-color:#b6d2ff;color:#1e40af}
     .iconBtn.on .num{color:#1e40af}
     .iconBtn:disabled{opacity:.6;cursor:not-allowed}
 
-    .iconOnly{
+    .miniBtn{
+      border:1px solid #e2e8f0;
+      background:#fff;
+      border-radius:12px;
       padding:8px 10px;
-      gap:6px;
+      font-weight:900;
+      cursor:pointer;
     }
+    .miniBtn:hover{background:#f8fafc}
+
+    /* ===== Detail panel (B) ===== */
+    .detailWrap{
+      margin-top:12px;
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#fff;
+      box-shadow:0 8px 24px rgba(2,6,23,.06);
+      overflow:hidden;
+      display:none;
+    }
+    .detailHead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 14px 10px;
+      border-bottom:1px solid #f1f5f9;
+      background:#fbfdff;
+    }
+    .detailTitle{
+      font-weight:900;
+      font-size:16px;
+      margin:0;
+    }
+    .detailMeta{
+      margin-top:4px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #e2e8f0;
+      background:#fff;
+      color:#334155;
+      font-weight:900;
+    }
+    .detailBody{padding:12px 14px 14px}
+    .lines{
+      margin:0;
+      padding-left:18px;
+      line-height:1.6;
+    }
+    .lines li{margin:6px 0}
+    .detailGrid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .commentBox{
+      margin-top:10px;
+      padding:12px;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      background:#fbfdff;
+    }
+    .commentList .item{
+      padding:10px 0;
+      border-top:1px solid #eef2f7;
+    }
+    textarea{
+      width:100%;
+      box-sizing:border-box;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      min-height:70px;
+    }
+    textarea:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+    .inline{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .err{color:#b91c1c;font-size:13px}
   </style>
 </head>
+
 <body>
 <header>
   <div class="wrap top">
     <div>
       <div style="opacity:.95"><a href="/index.html">← メニュー</a></div>
       <h1>3行投稿（一覧）</h1>
-      <div class="muted" id="me">ログイン情報：読み込み中…</div>
+      <div class="muted" id="me" style="color:rgba(255,255,255,.88)">ログイン情報：読み込み中…</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center">
       <button class="btn ghost" id="btnRefresh">更新</button>
@@ -167,7 +336,20 @@
         <div class="muted" id="status">読み込み中…</div>
       </div>
 
-      <div class="list" id="list"></div>
+      <!-- Table -->
+      <div class="tableWrap">
+        <div class="thead">
+          <div class="th">名前</div>
+          <div class="th">クラス</div>
+          <div class="th">授業日</div>
+          <div class="th">授業名 / テーマ（プレビュー）</div>
+          <div class="th" style="text-align:right">操作</div>
+        </div>
+        <div id="tbody"></div>
+      </div>
+
+      <!-- Detail panel (single, reused) -->
+      <div id="detail" class="detailWrap"></div>
     </div>
   </div>
 </main>
@@ -177,6 +359,13 @@
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 function fmtCount(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
 function normName(s){ return String(s ?? "").replace(/\s+/g,"").trim(); }
+function previewText(p){
+  const a = (p.line1||"").trim();
+  const b = (p.line2||"").trim();
+  const c = (p.line3||"").trim();
+  const first = a || b || c || "";
+  return first.length > 60 ? first.slice(0,60) + "…" : first;
+}
 
 async function api(path,opt={}){
   const res=await fetch(path,{ credentials:"include", cache:"no-store", ...opt });
@@ -190,8 +379,9 @@ async function api(path,opt={}){
 let ME=null;
 let ALL_ITEMS=[];
 let VIEW_ITEMS=[];
+let ACTIVE_ID=null;
 
-/* 兼容 display_name / displayName */
+/* user helpers */
 function pickDisplayName(u){ return u?.display_name ?? u?.displayName ?? u?.name ?? u?.username ?? ""; }
 function pickRole(u){ return u?.role ?? ""; }
 
@@ -201,27 +391,6 @@ function canEditPost(p){
   if(p.user_id != null && ME.id != null) return String(p.user_id) === String(ME.id);
   if(p.username && ME.username) return String(p.username) === String(ME.username);
   return normName(p.name) === normName(pickDisplayName(ME));
-}
-
-/* ---------- auth me ---------- */
-async function loadMe(){
-  try{
-    const r = await api("/api/auth/me?ts="+Date.now());
-    const u = r?.user ?? r?.item ?? r?.me ?? null;
-    if(!u){
-      ME = null;
-      document.getElementById("me").textContent = "未ログイン（ログインしてください）";
-      return;
-    }
-    ME = u;
-    const dn = pickDisplayName(u);
-    const role = pickRole(u);
-    const un = u.username ?? "";
-    document.getElementById("me").textContent = `ログイン：${dn || un || "?"}（${role || "?"}）`;
-  }catch(e){
-    ME = null;
-    document.getElementById("me").textContent = "未ログイン（ログインしてください）";
-  }
 }
 
 /* ---------- icons ---------- */
@@ -240,7 +409,11 @@ function chatSvg(){
     <path fill="currentColor" d="M4 4h16v12H7.17L4 19.17V4zm3 5h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z"/>
   </svg>`;
 }
-
+function editSvg(){
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l9.06-9.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+  </svg>`;
+}
 function setLiked(btn, liked){
   btn.dataset.liked = liked ? "1" : "0";
   btn.classList.toggle("on", liked);
@@ -248,72 +421,92 @@ function setLiked(btn, liked){
   if(ico) ico.innerHTML = likeSvg(liked);
 }
 
-/* ---------- render ---------- */
-function renderPost(p){
-  const div=document.createElement("div");
-  div.className="post";
-  div.dataset.id = String(p.id);
+/* ---------- auth me ---------- */
+async function loadMe(){
+  try{
+    const r = await api("/api/auth/me?ts="+Date.now());
+    const u = r?.user ?? r?.item ?? r?.me ?? null;
+    if(!u){
+      ME=null;
+      document.getElementById("me").textContent="未ログイン（ログインしてください）";
+      return;
+    }
+    ME=u;
+    const dn=pickDisplayName(u);
+    const role=pickRole(u);
+    const un=u.username ?? "";
+    document.getElementById("me").textContent = `ログイン：${dn || un || "?"}（${role || "?"}）`;
+  }catch(_e){
+    ME=null;
+    document.getElementById("me").textContent="未ログイン（ログインしてください）";
+  }
+}
+
+/* ---------- table render ---------- */
+function renderRow(p){
+  const row=document.createElement("div");
+  row.className="trow";
+  row.dataset.id=String(p.id);
 
   const likeCount = fmtCount(p.like_count ?? 0);
   const commentCount = fmtCount(p.comment_count ?? 0);
-  const showEdit = canEditPost(p);
+  const canEdit = canEditPost(p);
 
-  div.innerHTML = `
-    <div class="meta">
-      <span class="badge">👤 ${esc(p.name||"?")}</span>
-      <span class="badge">🏫 ${esc(p.class_name||"-")}</span>
-      <span class="badge">📅 ${esc(p.lesson_date||"-")}</span>
-      <span class="badge">🕒 ${esc(p.created_at||"-")}</span>
+  row.innerHTML = `
+    <div class="td colName">
+      <div class="ellipsis" title="${esc(p.name||"")}">${esc(p.name||"-")}</div>
+      <div class="cellMuted ellipsis">${esc(p.created_at||"")}</div>
     </div>
 
-    <div class="topic">${esc(p.topic||"")}</div>
-
-    <ol>
-      ${(p.line1||"").trim()?`<li>${esc(p.line1)}</li>`:""}
-      ${(p.line2||"").trim()?`<li>${esc(p.line2)}</li>`:""}
-      ${(p.line3||"").trim()?`<li>${esc(p.line3)}</li>`:""}
-    </ol>
-
-    <div class="actions">
-      <button class="iconBtn btnLikeToggle" data-liked="0" title="いいね">
-        <span class="ico">${likeSvg(false)}</span>
-        <span class="num likeCount">${likeCount}</span>
-      </button>
-
-      <!-- ✅ コメント按钮改成图标 -->
-      <button class="iconBtn iconOnly btnToggle" title="コメント">
-        <span class="ico">${chatSvg()}</span>
-        <span class="num commentCount">${commentCount}</span>
-      </button>
-
-      ${showEdit ? `<button class="btn gray btnEdit">修正</button>` : ``}
-
-      <span class="muted" style="margin-left:auto">${p.last_commented_at ? ("最終コメント: "+esc(p.last_commented_at)) : ""}</span>
+    <div class="td colClass">
+      <div class="ellipsis" title="${esc(p.class_name||"")}">${esc(p.class_name||"-")}</div>
     </div>
 
-    <div class="comments">
-      <div class="muted cstatus">読み込み中…</div>
-      <div class="clist"></div>
+    <div class="td colDate">
+      <div class="ellipsis">${esc(p.lesson_date||"-")}</div>
+    </div>
 
-      <div class="hr"></div>
-      <div class="muted">コメントを追加</div>
-      <textarea class="cbody" placeholder="コメントを書いてください"></textarea>
-      <div class="inline">
-        <button class="btn primary btnAdd">コメント投稿</button>
+    <div class="td colTopic">
+      <div class="topicStrong ellipsis" title="${esc(p.topic||"")}">${esc(p.topic||"-")}</div>
+      <span class="preview ellipsis" title="${esc(previewText(p))}">${esc(previewText(p))}</span>
+    </div>
+
+    <div class="td colActions">
+      <div class="actions">
+        <button class="iconBtn btnLikeToggle" data-liked="0" title="いいね">
+          <span class="ico">${likeSvg(false)}</span>
+          <span class="num likeCount">${likeCount}</span>
+        </button>
+
+        <button class="iconBtn btnComment" title="コメント">
+          <span class="ico">${chatSvg()}</span>
+          <span class="num commentCount">${commentCount}</span>
+        </button>
+
+        ${canEdit ? `
+          <button class="iconBtn btnEdit" title="修正">
+            <span class="ico">${editSvg()}</span>
+          </button>
+        ` : ``}
       </div>
-
-      <div class="err cerr" style="display:none"></div>
     </div>
   `;
 
-  wire(div, p);
-  return div;
+  wireRow(row, p);
+  return row;
 }
 
+function renderTable(items){
+  const tbody=document.getElementById("tbody");
+  tbody.innerHTML="";
+  items.forEach(p=>tbody.appendChild(renderRow(p)));
+}
+
+/* ---------- detail panel ---------- */
 function renderCommentItem(c){
   const who = c.user_name ?? c.teacher_name ?? c.author ?? "?";
   return `
-    <div style="padding:10px 0;border-top:1px solid #eef2f7">
+    <div class="item">
       <div class="muted" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <div>🧑 ${esc(who)} ｜ 🕒 ${esc(c.created_at||"-")}${c.updated_at ? (" ｜ ✏️ "+esc(c.updated_at)) : ""}</div>
       </div>
@@ -322,9 +515,196 @@ function renderCommentItem(c){
   `;
 }
 
+async function openDetail(p, focusComment=false){
+  const detail=document.getElementById("detail");
+  detail.style.display="block";
+
+  detail.innerHTML = `
+    <div class="detailHead">
+      <div>
+        <div class="detailTitle">${esc(p.topic || "(無題)")}</div>
+        <div class="detailMeta">
+          <span class="pill">👤 ${esc(p.name||"-")}</span>
+          <span class="pill">🏫 ${esc(p.class_name||"-")}</span>
+          <span class="pill">📅 ${esc(p.lesson_date||"-")}</span>
+          <span class="pill">🕒 ${esc(p.created_at||"-")}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="miniBtn" id="btnClose">閉じる</button>
+      </div>
+    </div>
+
+    <div class="detailBody">
+      <ol class="lines">
+        ${(p.line1||"").trim()?`<li>${esc(p.line1)}</li>`:""}
+        ${(p.line2||"").trim()?`<li>${esc(p.line2)}</li>`:""}
+        ${(p.line3||"").trim()?`<li>${esc(p.line3)}</li>`:""}
+      </ol>
+
+      <div class="commentBox" id="commentBox">
+        <div class="muted" style="font-weight:900">コメント</div>
+        <div class="muted" id="cstatus" style="margin-top:6px">読み込み中…</div>
+        <div class="commentList" id="clist"></div>
+
+        <div class="hr"></div>
+        <div class="muted">コメントを追加</div>
+        <textarea id="cbody" placeholder="コメントを書いてください"></textarea>
+        <div class="inline">
+          <button class="btn primary" id="btnAdd">コメント投稿</button>
+        </div>
+
+        <div class="err" id="cerr" style="display:none"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnClose").onclick = ()=>{
+    ACTIVE_ID=null;
+    // 行のactive解除
+    document.querySelectorAll(".trow.active").forEach(n=>n.classList.remove("active"));
+    detail.style.display="none";
+    detail.innerHTML="";
+  };
+
+  // load comments
+  const cstatus = document.getElementById("cstatus");
+  const clist = document.getElementById("clist");
+  const cerr = document.getElementById("cerr");
+
+  cerr.style.display="none"; cerr.textContent="";
+  clist.innerHTML="";
+  cstatus.textContent="読み込み中…";
+
+  try{
+    const data = await api(`/api/posts/${encodeURIComponent(p.id)}/comments?ts=${Date.now()}`);
+    const items = data.items || data.comments || [];
+    cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
+    clist.innerHTML = items.map(renderCommentItem).join("");
+  }catch(e){
+    cstatus.textContent="コメント取得エラー";
+    cerr.style.display=""; cerr.textContent=String(e.message||e);
+  }
+
+  document.getElementById("btnAdd").onclick = async ()=>{
+    if(!ME){
+      alert("ログインしてください");
+      location.replace("/login?ts="+Date.now());
+      return;
+    }
+    const body = (document.getElementById("cbody").value || "").trim();
+    if(!body){ alert("コメント本文が空です"); return; }
+
+    try{
+      await api(`/api/posts/${encodeURIComponent(p.id)}/comments`,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ body })
+      });
+      document.getElementById("cbody").value="";
+
+      // refresh comments
+      const data = await api(`/api/posts/${encodeURIComponent(p.id)}/comments?ts=${Date.now()}`);
+      const items = data.items || data.comments || [];
+      cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
+      clist.innerHTML = items.map(renderCommentItem).join("");
+
+      // update table count optimistically
+      const row = document.querySelector(`.trow[data-id="${CSS.escape(String(p.id))}"]`);
+      if(row){
+        const cc = row.querySelector(".commentCount");
+        if(cc) cc.textContent = String(Number(cc.textContent||0)+1);
+      }
+    }catch(e){
+      cerr.style.display=""; cerr.textContent=String(e.message||e);
+    }
+  };
+
+  if(focusComment){
+    const box = document.getElementById("commentBox");
+    box.scrollIntoView({ behavior:"smooth", block:"start" });
+    setTimeout(()=>document.getElementById("cbody")?.focus(), 250);
+  }
+}
+
+/* ---------- wiring row ---------- */
+function wireRow(row, p){
+  // click row: open detail
+  row.addEventListener("click", (ev)=>{
+    // 如果点的是按钮，不让行点击重复触发
+    if(ev.target.closest("button")) return;
+    toggleActive(row, p, false);
+  });
+
+  // like
+  const btnLike = row.querySelector(".btnLikeToggle");
+  const likeCountEl = row.querySelector(".likeCount");
+  btnLike.onclick = async (ev)=>{
+    ev.stopPropagation();
+    if(!ME){
+      alert("ログインしてください");
+      location.replace("/login?ts="+Date.now());
+      return;
+    }
+    btnLike.disabled = true;
+    try{
+      const likedNow = btnLike.dataset.liked === "1";
+      if(!likedNow){
+        const r = await api(`/api/posts/${encodeURIComponent(p.id)}/like`, { method:"POST" });
+        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
+        setLiked(btnLike, true);
+      }else{
+        const r = await api(`/api/posts/${encodeURIComponent(p.id)}/like`, { method:"DELETE" });
+        likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
+        setLiked(btnLike, false);
+      }
+    }catch(e){
+      alert(String(e.message||e));
+    }finally{
+      btnLike.disabled = false;
+    }
+  };
+
+  // comment button: open detail & focus comment
+  const btnComment = row.querySelector(".btnComment");
+  btnComment.onclick = async (ev)=>{
+    ev.stopPropagation();
+    toggleActive(row, p, true);
+  };
+
+  // edit
+  const btnEdit = row.querySelector(".btnEdit");
+  if(btnEdit){
+    btnEdit.onclick = (ev)=>{
+      ev.stopPropagation();
+      location.href = `/posts_modify.html?id=${encodeURIComponent(p.id)}`;
+    };
+  }
+}
+
+function toggleActive(row, p, focusComment){
+  const id = String(p.id);
+
+  // click same row: collapse
+  if(ACTIVE_ID === id){
+    ACTIVE_ID = null;
+    row.classList.remove("active");
+    const detail=document.getElementById("detail");
+    detail.style.display="none";
+    detail.innerHTML="";
+    return;
+  }
+
+  ACTIVE_ID = id;
+  document.querySelectorAll(".trow.active").forEach(n=>n.classList.remove("active"));
+  row.classList.add("active");
+
+  openDetail(p, focusComment);
+}
+
 /* ---------- like status loader ---------- */
 async function loadLikeStatusForVisible(){
-  const nodes = Array.from(document.querySelectorAll(".post"));
+  const nodes = Array.from(document.querySelectorAll(".trow"));
   const tasks = nodes.map(n=> async ()=>{
     const id = n.dataset.id;
     const btn = n.querySelector(".btnLikeToggle");
@@ -338,110 +718,10 @@ async function loadLikeStatusForVisible(){
     }catch(_e){}
   });
 
-  const limit = 6;
+  const limit = 8;
   let idx = 0;
   async function worker(){ while(idx < tasks.length){ await tasks[idx++](); } }
   await Promise.all(Array.from({length:Math.min(limit,tasks.length)}, worker));
-}
-
-/* ---------- actions ---------- */
-function wire(div,p){
-  const id = Number(p.id);
-
-  const btnEdit = div.querySelector(".btnEdit");
-  if(btnEdit) btnEdit.onclick = () => location.href = `/posts_modify.html?id=${encodeURIComponent(id)}`;
-
-  // ✅ comments toggle (FIXED!)
-  const box = div.querySelector(".comments");
-  const btnToggle = div.querySelector(".btnToggle");
-  const cstatus = div.querySelector(".cstatus");
-  const clist = div.querySelector(".clist");
-  const cerr = div.querySelector(".cerr");
-
-  btnToggle.onclick = async () => {
-    const isVisible = getComputedStyle(box).display !== "none"; // ✅ 关键修复
-    if(isVisible){
-      box.style.display = "none";
-      return;
-    }
-    box.style.display = "block";
-
-    cerr.style.display="none"; cerr.textContent="";
-    cstatus.textContent="読み込み中…";
-    clist.innerHTML="";
-    try{
-      const data = await api(`/api/posts/${id}/comments?ts=${Date.now()}`);
-      const items = data.items || data.comments || [];
-      cstatus.textContent = items.length ? `コメント：${items.length}件` : "コメントはまだありません。";
-      clist.innerHTML = items.map(renderCommentItem).join("");
-    }catch(e){
-      cstatus.textContent="コメント取得エラー";
-      cerr.style.display=""; cerr.textContent=String(e.message||e);
-    }
-  };
-
-  // like toggle
-  const btnLikeToggle = div.querySelector(".btnLikeToggle");
-  const likeCountEl = div.querySelector(".likeCount");
-  if(btnLikeToggle){
-    btnLikeToggle.onclick = async ()=>{
-      if(!ME){
-        alert("ログインしてください");
-        location.replace("/login?ts="+Date.now());
-        return;
-      }
-
-      btnLikeToggle.disabled = true;
-      try{
-        const likedNow = btnLikeToggle.dataset.liked === "1";
-        if(!likedNow){
-          const r = await api(`/api/posts/${id}/like`, { method:"POST" });
-          likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
-          setLiked(btnLikeToggle, true);
-        }else{
-          const r = await api(`/api/posts/${id}/like`, { method:"DELETE" });
-          likeCountEl.textContent = String(r.like_count ?? r.likeCount ?? likeCountEl.textContent);
-          setLiked(btnLikeToggle, false);
-        }
-      }catch(e){
-        alert(String(e.message||e));
-      }finally{
-        btnLikeToggle.disabled = false;
-      }
-    };
-  }
-
-  // add comment
-  const btnAdd = div.querySelector(".btnAdd");
-  if(btnAdd){
-    btnAdd.onclick = async () => {
-      if(!ME){
-        alert("ログインしてください");
-        location.replace("/login?ts="+Date.now());
-        return;
-      }
-      const ta = div.querySelector(".cbody");
-      const body = (ta.value||"").trim();
-      if(!body){ alert("コメント本文が空です"); return; }
-      try{
-        await api(`/api/posts/${id}/comments`, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ body })
-        });
-        ta.value="";
-        // reload comments
-        btnToggle.click();
-        btnToggle.click();
-
-        // update comment count UI optimistically
-        const commentCountEl = div.querySelector(".commentCount");
-        commentCountEl.textContent = String(Number(commentCountEl.textContent||0)+1);
-      }catch(e){
-        alert(String(e.message||e));
-      }
-    };
-  }
 }
 
 /* ---------- filter ---------- */
@@ -478,12 +758,6 @@ function rebuildFilterOptions(items){
   fill($fTopic, topics, keep.topic);
 }
 
-function renderList(items){
-  const list=document.getElementById("list");
-  list.innerHTML="";
-  items.forEach(p=>list.appendChild(renderPost(p)));
-}
-
 function applyFilters(){
   const vName  = $fName.value;
   const vClass = $fClass.value;
@@ -498,8 +772,17 @@ function applyFilters(){
     return true;
   });
 
-  renderList(VIEW_ITEMS);
+  renderTable(VIEW_ITEMS);
   $filterStatus.textContent = `表示：${VIEW_ITEMS.length} / ${ALL_ITEMS.length}`;
+
+  // clear open detail if filtered out
+  if(ACTIVE_ID && !VIEW_ITEMS.some(x=>String(x.id)===String(ACTIVE_ID))){
+    ACTIVE_ID = null;
+    const detail=document.getElementById("detail");
+    detail.style.display="none";
+    detail.innerHTML="";
+  }
+
   loadLikeStatusForVisible();
 }
 
@@ -514,11 +797,16 @@ function clearFilters(){
 /* ---------- load list ---------- */
 async function refresh(){
   document.getElementById("status").textContent="読み込み中…";
-  document.getElementById("list").innerHTML="";
+  document.getElementById("tbody").innerHTML="";
+  const detail=document.getElementById("detail");
+  detail.style.display="none"; detail.innerHTML="";
+  ACTIVE_ID=null;
+
   try{
     const data = await api("/api/posts?limit=50&ts="+Date.now());
     ALL_ITEMS = data.items || [];
     document.getElementById("status").textContent = `件数：${ALL_ITEMS.length}`;
+
     rebuildFilterOptions(ALL_ITEMS);
     applyFilters();
   }catch(e){
@@ -526,12 +814,16 @@ async function refresh(){
   }
 }
 
+/* ---------- init ---------- */
 document.getElementById("btnRefresh").onclick = refresh;
 document.getElementById("btnNew").onclick = () => location.href = "/posts_new.html";
 document.getElementById("btnClear").onclick = clearFilters;
 [$fName,$fClass,$fDate,$fTopic].forEach(sel=> sel.addEventListener("change", applyFilters));
 
-(async () => { await loadMe(); await refresh(); })();
+(async () => {
+  await loadMe();
+  await refresh();
+})();
 </script>
 </body>
 </html>

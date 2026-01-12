@@ -12,7 +12,7 @@ export async function onRequest(context) {
       return json({ ok: false, error: "Invalid id" }, 400, headers);
     }
 
-    // 登录用户
+    // ✅ 登录用户（tl_user）
     const me = await getCurrentUser(env, request);
     if (!me) return json({ ok: false, error: "Not logged in" }, 401, headers);
 
@@ -28,7 +28,12 @@ export async function onRequest(context) {
 
       if (!row) return json({ ok: false, error: "Not found" }, 404, headers);
 
-      const canEdit = (me.role === "admin") || (String(row.name || "") === String(me.display_name || ""));
+      const canEdit =
+        (me.role === "admin") ||
+        (String(row.name || "") === String(me.display_name || "")) ||
+        (String(row.name || "").replace(/\s+/g,"") === String(me.display_name || "").replace(/\s+/g,"")) ||
+        (String(row.name || "").replace(/\s+/g,"") === String(me.username || "").replace(/\s+/g,""));
+
       return json({ ok: true, item: row, can_edit: canEdit }, 200, headers);
     }
 
@@ -39,7 +44,11 @@ export async function onRequest(context) {
       const row = await env.DB.prepare(`SELECT id, name FROM posts WHERE id=?`).bind(id).first();
       if (!row) return json({ ok: false, error: "Not found" }, 404, headers);
 
-      const isOwner = String(row.name || "") === String(me.display_name || "");
+      const isOwner =
+        String(row.name || "") === String(me.display_name || "") ||
+        String(row.name || "").replace(/\s+/g,"") === String(me.display_name || "").replace(/\s+/g,"") ||
+        String(row.name || "").replace(/\s+/g,"") === String(me.username || "").replace(/\s+/g,"");
+
       const canEdit = (me.role === "admin") || isOwner;
       if (!canEdit) return json({ ok: false, error: "Forbidden" }, 403, headers);
 
@@ -47,7 +56,6 @@ export async function onRequest(context) {
       const lesson_date = normalizeDate(body.lesson_date);
       const topic = str(body.topic, 0, 100);
 
-      // 3行：至少1行非空即可
       const line1 = str(body.line1, 0, 200);
       const line2 = str(body.line2, 0, 200);
       const line3 = str(body.line3, 0, 200);
@@ -91,6 +99,7 @@ function corsHeaders() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-store",
   };
 }
 function corsPreflight() {
@@ -117,7 +126,6 @@ function normalizeDate(v) {
   if (!m) return "";
   return `${m[1]}-${m[2]}-${m[3]}`;
 }
-
 function parseCookies(cookieHeader) {
   const out = {};
   const s = cookieHeader || "";
@@ -128,20 +136,19 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-// 假设你登录后把 session token 存在 Cookie: session=xxxxx
+// ✅ tl_user から users を引く
 async function getCurrentUser(env, request) {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
-  const token = cookies.session || cookies.token || cookies.session_token || "";
-  if (!token) return null;
+  const username = (cookies.tl_user || "").trim();
+  if (!username) return null;
 
   const row = await env.DB.prepare(`
-    SELECT u.id, u.username, u.display_name, u.role
-    FROM sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.token = ?
-      AND (s.expires_at IS NULL OR s.expires_at > (strftime('%Y-%m-%dT%H:%M:%fZ','now')))
-      AND u.is_active = 1
-  `).bind(token).first();
+    SELECT id, username, display_name, role
+    FROM users
+    WHERE username = ?
+      AND is_active = 1
+    LIMIT 1
+  `).bind(username).first();
 
   return row || null;
 }

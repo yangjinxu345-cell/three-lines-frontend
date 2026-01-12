@@ -310,7 +310,6 @@
 
       <!-- クイズ -->
       <div class="group">
-        <!-- ✅ 修正1：div → a（让它可点击） -->
         <a class="tile" href="/quiz.html">
           <div class="ico">🧩</div>
           <div>
@@ -319,7 +318,7 @@
           </div>
         </a>
 
-        <!-- ✅ 新增：クイズ管理（admin/teacher 才显示） -->
+        <!-- ✅ クイズ管理（admin/teacher のみ表示） -->
         <a id="tileQuizAdmin" class="tile hidden" href="/quiz_admin.html">
           <div class="ico">🛠️</div>
           <div>
@@ -347,18 +346,27 @@
 <script>
 (async ()=>{
   const r = await fetch("/api/auth/me",{credentials:"include"}).then(r=>r.json());
-  if(!r.ok){location.href="/login";return;}
-  metaName.textContent = r.user.display_name || r.user.username;
-  metaUser.textContent = r.user.username;
+
+  // ✅ 兼容返回结构：{ok:true,user:{...}} 或 {ok:true,data:{user:{...}}}
+  const user = r?.user || r?.data?.user;
+
+  if(!r?.ok || !user){
+    location.href="/login";
+    return;
+  }
+
+  metaName.textContent = user.display_name || user.username;
+  metaUser.textContent = user.username;
   loginMeta.classList.remove("hidden");
 
-  // ✅ admin/teacher なら クイズ管理 を表示
-  const role = String(r.user.role || "");
+  // ✅ 按 DB 约束：role in ('student','teacher','admin')
+  const role = String(user.role || "").toLowerCase();
   if (role === "admin" || role === "teacher") {
     const el = document.getElementById("tileQuizAdmin");
     if (el) el.classList.remove("hidden");
   }
 })();
+
 btnLogout.onclick=async()=>{await fetch("/api/auth/logout",{method:"POST"});location.href="/login";};
 btnAccount.onclick=()=>location.href="/account.html";
 btnMenu.onclick=()=>location.href="/index.html";

@@ -24,21 +24,22 @@ export async function onRequest(context) {
     }
 
     if (request.method === "POST") {
-      await requireTeacherKey(env.DB, request);
+      const me = await getCurrentUser(env, request);
+      if (!me) return json({ ok: false, error: "Not logged in" }, 401, headers);
 
       const body = await safeJson(request);
       if (!body) return json({ ok: false, error: "Invalid JSON body" }, 400, headers);
 
-      const teacherName = str(body.teacher_name, 1, 50);
+      const userName = String(me.display_name || me.username || "").trim() || "unknown";
       const commentBody = str(body.body, 1, 2000);
-      if (!teacherName || !commentBody) {
-        return json({ ok: false, error: "Missing fields: teacher_name, body" }, 400, headers);
+      if (!commentBody) {
+        return json({ ok: false, error: "Missing body" }, 400, headers);
       }
 
       const ins = await env.DB.prepare(`
         INSERT INTO post_comments (post_id, teacher_name, body)
         VALUES (?, ?, ?)
-      `).bind(postId, teacherName, commentBody).run();
+      `).bind(postId, userName, commentBody).run();
 
       const commentId = ins.meta?.last_row_id;
 
@@ -54,25 +55,7 @@ export async function onRequest(context) {
 
     return json({ ok: false, error: "Method Not Allowed" }, 405, headers);
   } catch (e) {
-    const msg = String(e?.message || e);
-    if (msg.startsWith("AUTH:")) {
-      return json({ ok: false, error: msg.replace(/^AUTH:\s*/, "") }, 401, headers);
-    }
-    return json({ ok: false, error: msg }, 500, headers);
-  }
-}
-
-async function requireTeacherKey(db, request) {
-  const provided = (request.headers.get("X-Teacher-Key") || "").trim();
-  if (!provided) throw new Error("AUTH: Missing X-Teacher-Key");
-
-  const row = await db.prepare(`
-    SELECT teacher_key FROM user_settings WHERE name = 'default'
-  `).first();
-
-  const expected = String(row?.teacher_key || "").trim();
-  if (expected && provided !== expected) {
-    throw new Error("AUTH: Invalid teacher key");
+    return json({ ok: false, error: String(e?.message || e) }, 500, headers);
   }
 }
 
@@ -100,7 +83,8 @@ function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS,PUT,DELETE",
-    "Access-Control-Allow-Headers": "Content-Type, X-Teacher-Key",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-store",
   };
 }
 function corsPreflight() {
@@ -120,4 +104,28 @@ function str(v, minLen, maxLen) {
   const s = String(v).trim();
   if (s.length < minLen) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+function parseCookies(cookieHeader) {
+  const out = {};
+  const s = cookieHeader || "";
+  s.split(";").forEach(p => {
+    const i = p.indexOf("=");
+    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+  });
+  return out;
+}
+async function getCurrentUser(env, request) {
+  const cookies = parseCookies(request.headers.get("Cookie") || "");
+  const username = (cookies.tl_user || "").trim();
+  if (!username) return null;
+
+  const row = await env.DB.prepare(`
+    SELECT id, username, display_name, role
+    FROM users
+    WHERE username = ?
+      AND is_active = 1
+    LIMIT 1
+  `).bind(username).first();
+
+  return row || null;
 }

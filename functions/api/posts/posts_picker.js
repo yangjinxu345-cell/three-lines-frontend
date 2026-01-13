@@ -1,4 +1,34 @@
-// /posts_picker.js
+// functions/api/posts/posts_picker.js
+export async function onRequest({ request }) {
+  // 只允许 GET/OPTIONS
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders() });
+  }
+  if (request.method !== "GET") {
+    return new Response("Method Not Allowed", { status: 405, headers: corsHeaders() });
+  }
+
+  // 返回纯 JS
+  return new Response(JS_CODE, {
+    status: 200,
+    headers: {
+      ...corsHeaders(),
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store",
+    }
+  });
+}
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+// 这里是脚本内容（与之前的 posts_picker.js 一样）
+const JS_CODE = `
 async function api(path, opt = {}) {
   const res = await fetch(path, { credentials: "include", cache: "no-store", ...opt });
   const text = await res.text();
@@ -16,55 +46,61 @@ let ITEMS = [];
 
 function setErr(msg){
   const el = document.getElementById("err");
+  if (!el) return;
   el.style.display = msg ? "" : "none";
   el.textContent = msg || "";
 }
 function updatePage(){
+  const pageEl = document.getElementById("page");
+  const prev = document.getElementById("prev");
+  const next = document.getElementById("next");
+  if (!pageEl || !prev || !next) return;
+
   const from = Math.min(OFFSET + 1, TOTAL);
   const to = Math.min(OFFSET + LIMIT, TOTAL);
-  document.getElementById("page").textContent = `${from}-${to} / ${TOTAL}`;
-  document.getElementById("prev").disabled = OFFSET <= 0;
-  document.getElementById("next").disabled = OFFSET + LIMIT >= TOTAL;
+  pageEl.textContent = \`\${from}-\${to} / \${TOTAL}\`;
+  prev.disabled = OFFSET <= 0;
+  next.disabled = OFFSET + LIMIT >= TOTAL;
 }
 
 function render(){
   const list = document.getElementById("list");
+  if (!list) return;
   list.innerHTML = "";
+
   for(const p of ITEMS){
     const div = document.createElement("div");
     div.className = "item";
-    div.innerHTML = `
+    div.innerHTML = \`
       <div class="row1">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span class="badge">#${p.id}</span>
-          <span class="badge">${esc(p.lesson_date||"-")}</span>
-          <span class="badge">${esc(p.class_name||"-")}</span>
-          <span class="badge">${esc(p.topic||"-")}</span>
+          <span class="badge">#\${p.id}</span>
+          <span class="badge">\${esc(p.lesson_date||"-")}</span>
+          <span class="badge">\${esc(p.class_name||"-")}</span>
+          <span class="badge">\${esc(p.topic||"-")}</span>
         </div>
-        <div class="name">${esc(p.name||"-")}</div>
+        <div class="name">\${esc(p.name||"-")}</div>
       </div>
 
       <div class="lines">
-        <div>1) ${esc(p.line1||"")}</div>
-        <div>2) ${esc(p.line2||"")}</div>
-        <div>3) ${esc(p.line3||"")}</div>
+        <div>1) \${esc(p.line1||"")}</div>
+        <div>2) \${esc(p.line2||"")}</div>
+        <div>3) \${esc(p.line3||"")}</div>
       </div>
 
       <div class="actions">
-        <button class="btn primary" data-id="${p.id}">この投稿を使う</button>
+        <button class="btn primary" data-id="\${p.id}">この投稿を使う</button>
       </div>
-    `;
+    \`;
     list.appendChild(div);
   }
 
-  // bind buttons
   list.querySelectorAll("button[data-id]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const id = Number(btn.getAttribute("data-id"));
       const post = ITEMS.find(x => Number(x.id) === id);
       if (!post) return;
 
-      // payload to send back
       const payload = {
         type: "postSelected",
         post: {
@@ -77,21 +113,20 @@ function render(){
         }
       };
 
-      // 1) try postMessage to opener
+      // opener に送る
       try {
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage(payload, location.origin);
         }
       } catch {}
 
-      // 2) localStorage fallback
+      // localStorage 兜底
       try {
         localStorage.setItem("tl_selected_post", JSON.stringify(payload.post));
       } catch {}
 
-      // close window
+      // 閉じる（ブロック時は戻る）
       try { window.close(); } catch {}
-      // if blocked, redirect back
       location.href = "/quiz_admin.html";
     });
   });
@@ -99,7 +134,8 @@ function render(){
 
 async function load(){
   setErr("");
-  const q = document.getElementById("q").value.trim();
+  const qEl = document.getElementById("q");
+  const q = qEl ? qEl.value.trim() : "";
 
   const url = new URL(location.origin + "/api/posts");
   url.searchParams.set("limit", String(LIMIT));
@@ -109,18 +145,32 @@ async function load(){
   const r = await api(url.pathname + "?" + url.searchParams.toString());
   ITEMS = r.items || [];
   TOTAL = r.total || 0;
+
   render();
   updatePage();
 }
 
-document.getElementById("reload").onclick = ()=>{ OFFSET=0; load().catch(e=>setErr(String(e.message||e))); };
-document.getElementById("prev").onclick = ()=>{ OFFSET=Math.max(0, OFFSET-LIMIT); load().catch(e=>setErr(String(e.message||e))); };
-document.getElementById("next").onclick = ()=>{ OFFSET=OFFSET+LIMIT; load().catch(e=>setErr(String(e.message||e))); };
+document.getElementById("reload")?.addEventListener("click", ()=>{
+  OFFSET = 0;
+  load().catch(e=>setErr(String(e.message||e)));
+});
+document.getElementById("prev")?.addEventListener("click", ()=>{
+  OFFSET = Math.max(0, OFFSET - LIMIT);
+  load().catch(e=>setErr(String(e.message||e)));
+});
+document.getElementById("next")?.addEventListener("click", ()=>{
+  OFFSET = OFFSET + LIMIT;
+  load().catch(e=>setErr(String(e.message||e)));
+});
 
 let t=null;
-document.getElementById("q").addEventListener("input", ()=>{
+document.getElementById("q")?.addEventListener("input", ()=>{
   clearTimeout(t);
-  t=setTimeout(()=>{ OFFSET=0; load().catch(e=>setErr(String(e.message||e))); }, 200);
+  t=setTimeout(()=>{
+    OFFSET=0;
+    load().catch(e=>setErr(String(e.message||e)));
+  }, 200);
 });
 
 load().catch(e=>setErr(String(e.message||e)));
+`;

@@ -102,12 +102,17 @@
       <div class="bar">
         <div class="barLeft">
           <input id="genPostId" class="mono" placeholder="AI生成: post_id (例: 16)" style="min-width:180px" />
+          <!-- ✅ 新增：投稿选择按钮 -->
+          <button class="btn ghost" id="btnPickPost">投稿を選ぶ</button>
           <button class="btn primary" id="btnGenerate">AIで草稿生成</button>
         </div>
         <div class="barRight">
           <button class="btn ghost" id="btnReload">更新</button>
         </div>
       </div>
+
+      <!-- ✅ 新增：选择结果显示（不影响原功能） -->
+      <div class="small" id="pickedPost" style="margin-top:6px;display:none"></div>
 
       <div class="hint">※ 生成は teacher/admin のみ。最大10件/回。</div>
       <div class="err" id="listErr" style="display:none"></div>
@@ -210,6 +215,22 @@ let TOTAL=0;
 let ITEMS=[];
 let SELECTED=null;
 
+/* ✅ 选择投稿：回填 post_id + 显示摘要 */
+function applyPickedPost(post){
+  if(!post || !post.id) return;
+  document.getElementById("genPostId").value = String(post.id);
+
+  const el = document.getElementById("pickedPost");
+  el.style.display = "";
+  el.innerHTML = `
+    選択中の投稿：<b>#${esc(post.id)}</b>
+    ｜ 🏫 ${esc(post.class_name||"-")}
+    ｜ 📅 ${esc(post.lesson_date||"-")}
+    ｜ 📘 ${esc(post.topic||"-")}
+    ｜ 👤 ${esc(post.name||"-")}
+  `;
+}
+
 async function loadMe(){
   try{
     const r = await api("/api/auth/me?ts="+Date.now());
@@ -294,12 +315,10 @@ async function selectItem(id){
   SELECTED = r.item;
   renderList();
 
-  // enable buttons
   document.getElementById("btnSave").disabled = false;
   document.getElementById("btnPublish").disabled = false;
   document.getElementById("btnReject").disabled = false;
 
-  // fill
   document.getElementById("selMeta").textContent = `選択中：#${SELECTED.id}（post_id=${SELECTED.post_id}）`;
   document.getElementById("f_status").value = SELECTED.status || "draft";
   document.getElementById("difficulty").value = String(SELECTED.difficulty || 2);
@@ -312,7 +331,6 @@ async function selectItem(id){
   document.getElementById("explanation").value = SELECTED.explanation || "";
   document.getElementById("review_note").value = SELECTED.review_note || "";
 
-  // show post info for reference
   document.getElementById("postInfo").innerHTML = `
     <div class="small">
       <b>投稿情報</b><br/>
@@ -361,7 +379,6 @@ async function publish(){
   if(!SELECTED) return;
   setEditErr(""); setEditOk("");
   try{
-    // 先保存（内容が最新になるように）
     await save();
     const r = await api(`/api/quiz/drafts/${SELECTED.id}/publish`, { method:"POST" });
     setEditOk(`公開しました。quiz_item_id=${r.quiz_item_id}`);
@@ -405,7 +422,6 @@ async function generate(){
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ post_ids: ids })
     });
-    // 成功/失敗を表示
     const created = r.created?.length || 0;
     const errors = r.errors?.length || 0;
     setEditOk(`生成完了：created=${created}, errors=${errors}`);
@@ -416,7 +432,37 @@ async function generate(){
   }
 }
 
-// wiring
+/* ✅ 新增：打开选择投稿页 */
+function openPicker(){
+  // popup 优先；若被拦截，退化为当前页跳转
+  const w = window.open("/posts_picker.html", "posts_picker", "width=1100,height=800");
+  if (!w) location.href = "/posts_picker.html";
+}
+
+/* ✅ 新增：接收 postMessage */
+window.addEventListener("message", (ev) => {
+  try{
+    if (ev.origin !== location.origin) return;
+    const msg = ev.data;
+    if (!msg || msg.type !== "postSelected") return;
+    applyPickedPost(msg.post);
+    try { localStorage.setItem("tl_selected_post", JSON.stringify(msg.post)); } catch {}
+  }catch{}
+});
+
+/* ✅ 新增：页面加载时尝试从 localStorage 读取上次选择 */
+function loadPickedFromStorage(){
+  try{
+    const raw = localStorage.getItem("tl_selected_post");
+    if (!raw) return;
+    const post = JSON.parse(raw);
+    applyPickedPost(post);
+  }catch{}
+}
+
+// wiring（原有不动，只新增一个按钮绑定）
+document.getElementById("btnPickPost").onclick = openPicker;
+
 document.getElementById("btnReload").onclick = ()=>{ OFFSET=0; loadList().catch(e=>setListErr(String(e.message||e))); };
 document.getElementById("prev").onclick = ()=>{ OFFSET = Math.max(0, OFFSET-LIMIT); loadList().catch(e=>setListErr(String(e.message||e))); };
 document.getElementById("next").onclick = ()=>{ OFFSET = OFFSET+LIMIT; loadList().catch(e=>setListErr(String(e.message||e))); };
@@ -435,6 +481,7 @@ document.getElementById("btnGenerate").onclick = generate;
 
 (async ()=>{
   await loadMe();
+  loadPickedFromStorage();   // ✅ 新增（不影响原逻辑）
   await loadList();
 })();
 </script>

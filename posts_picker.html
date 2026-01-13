@@ -22,8 +22,7 @@
     .barLeft{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .barRight{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
-    select,input{border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;background:#fff}
-    input{min-width:260px}
+    input{border:1px solid var(--border);border-radius:12px;padding:9px 10px;font-size:13px;background:#fff;min-width:260px}
     .btn{border:0;border-radius:12px;padding:9px 12px;font-weight:900;cursor:pointer}
     .btn.primary{background:var(--pri);color:#fff}
     .btn.ghost{background:#eef2ff;color:#1e40af}
@@ -71,7 +70,7 @@
   </div>
 </main>
 
-<!-- ✅ 这里改成从 Functions 路由加载 -->
-<script src="/api/posts/posts_picker.js"></script>
+<!-- ✅ 注意：Functions 路由没有 .js 后缀 -->
+<script src="/api/posts/posts_picker"></script>
 </body>
 </html>
